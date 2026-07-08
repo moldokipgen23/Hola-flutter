@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Business> newlyAdded = [];
   List<Product> popularProducts = [];
   bool loading = true;
+  bool loadError = false;
 
   @override
   void initState() {
@@ -62,25 +63,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    if (mounted) setState(() => loading = true);
-
-    final results = await Future.wait([
-      _safeList(api.get('/categories'), (l) => l.map((c) => Category.fromJson(c)).toList()),
-      _safeList(api.get('/businesses/featured'), (l) => l.map((b) => Business.fromJson(b)).toList()),
-      _safeList(api.get('/businesses/trending'), (l) => l.map((b) => Business.fromJson(b)).toList()),
-      _safeList(api.get('/businesses/new'), (l) => l.map((b) => Business.fromJson(b)).toList()),
-      _safeList(api.get('/products/popular'), (l) => l.map((p) => Product.fromJson(p)).toList()),
-    ]);
-
     if (mounted) {
       setState(() {
-        categories = results[0] as List<Category>;
-        featured = results[1] as List<Business>;
-        trending = results[2] as List<Business>;
-        newlyAdded = results[3] as List<Business>;
-        popularProducts = results[4] as List<Product>;
-        loading = false;
+        loading = true;
+        loadError = false;
       });
+    }
+
+    try {
+      final cats = await _safeList(
+          api.get('/categories'), (l) => l.map((c) => Category.fromJson(c)).toList());
+      final feat = await _safeList(
+          api.get('/businesses/featured'), (l) => l.map((b) => Business.fromJson(b)).toList());
+      final trnd = await _safeList(
+          api.get('/businesses/trending'), (l) => l.map((b) => Business.fromJson(b)).toList());
+      final nw = await _safeList(
+          api.get('/businesses/new'), (l) => l.map((b) => Business.fromJson(b)).toList());
+      final pop = await _safeList(
+          api.get('/products/popular'), (l) => l.map((p) => Product.fromJson(p)).toList());
+
+      if (mounted) {
+        setState(() {
+          categories = cats;
+          featured = feat;
+          trending = trnd;
+          newlyAdded = nw;
+          popularProducts = pop;
+          loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          loadError = true;
+        });
+      }
     }
   }
 
@@ -91,7 +109,23 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _loadData,
         child: loading
             ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-            : CustomScrollView(
+            : loadError
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text('Could not load content', style: TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : CustomScrollView(
                 slivers: [
                   SliverAppBar(
                     floating: true,
