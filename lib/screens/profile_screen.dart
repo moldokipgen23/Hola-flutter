@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import '../services/api.dart';
 import '../theme.dart';
 import 'auth_screen.dart';
+import 'settings_screen.dart';
+import 'notifications_screen.dart';
+import 'conversations_screen.dart';
+import 'owner_dashboard_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final ValueChanged<ThemeMode>? onThemeChanged;
+  final ThemeMode? themeMode;
+
+  const ProfileScreen({super.key, this.onThemeChanged, this.themeMode});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -60,7 +67,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const NotificationsScreen(),
+            )),
+          ),
+        ],
+      ),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : !loggedIn
@@ -98,10 +115,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(user?['email'] ?? '', style: TextStyle(color: Colors.grey[600])),
                       const SizedBox(height: 32),
+                      _buildMenuItem(Icons.dashboard, 'Owner Dashboard', () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const OwnerDashboardScreen(),
+                        ));
+                      }),
+                      _buildMenuItem(Icons.chat, 'Messages', () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const ConversationsScreen(),
+                        ));
+                      }),
+                      _buildMenuItem(Icons.notifications, 'Notifications', () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(),
+                        ));
+                      }),
                       _buildMenuItem(Icons.bookmark, 'My Saved', () {}),
                       _buildMenuItem(Icons.business, 'My Claims', () {}),
                       _buildMenuItem(Icons.report, 'My Reports', () {}),
-                      _buildMenuItem(Icons.settings, 'Settings', () {}),
+                      _buildMenuItem(Icons.settings, 'Settings', () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => SettingsScreen(
+                            onThemeChanged: widget.onThemeChanged,
+                            themeMode: widget.themeMode,
+                          ),
+                        ));
+                      }),
                       _buildMenuItem(Icons.help, 'Help', () {}),
                       const SizedBox(height: 16),
                       SizedBox(

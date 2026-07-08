@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/categories_screen.dart';
@@ -13,8 +14,31 @@ void main() {
   runApp(const HolaApp());
 }
 
-class HolaApp extends StatelessWidget {
+class HolaApp extends StatefulWidget {
   const HolaApp({super.key});
+
+  @override
+  State<HolaApp> createState() => _HolaAppState();
+}
+
+class _HolaAppState extends State<HolaApp> {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isDark = prefs.getBool('dark_mode') ?? false;
+    setState(() => _themeMode = isDark ? ThemeMode.dark : ThemeMode.light);
+  }
+
+  void _setThemeMode(ThemeMode mode) {
+    setState(() => _themeMode = mode);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,21 +46,27 @@ class HolaApp extends StatelessWidget {
       title: 'Hola',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const SplashScreen(nextScreen: _InitScreen()),
+      darkTheme: AppTheme.darkTheme,
+      themeMode: _themeMode,
+      home: SplashScreen(nextScreen: _InitScreen(
+        onThemeChanged: _setThemeMode,
+        themeMode: _themeMode,
+      )),
     );
   }
 }
 
 class _InitScreen extends StatefulWidget {
-  const _InitScreen();
+  final ValueChanged<ThemeMode> onThemeChanged;
+  final ThemeMode themeMode;
+
+  const _InitScreen({required this.onThemeChanged, required this.themeMode});
 
   @override
   State<_InitScreen> createState() => _InitScreenState();
 }
 
 class _InitScreenState extends State<_InitScreen> {
-  bool _checking = true;
-
   @override
   void initState() {
     super.initState();
@@ -45,11 +75,21 @@ class _InitScreenState extends State<_InitScreen> {
 
   Future<void> _checkFirstTime() async {
     final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('welcome_seen') ?? false;
+    final onboardingSeen = prefs.getBool('onboarding_seen') ?? false;
+    final welcomeSeen = prefs.getBool('welcome_seen') ?? false;
+
     if (!mounted) return;
 
-    if (!seen) {
+    if (!onboardingSeen) {
+      await prefs.setBool('onboarding_seen', true);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    } else if (!welcomeSeen) {
       await prefs.setBool('welcome_seen', true);
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -57,7 +97,10 @@ class _InitScreenState extends State<_InitScreen> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
+        MaterialPageRoute(builder: (_) => MainScreen(
+          onThemeChanged: widget.onThemeChanged,
+          themeMode: widget.themeMode,
+        )),
       );
     }
   }
@@ -71,7 +114,10 @@ class _InitScreenState extends State<_InitScreen> {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final ValueChanged<ThemeMode>? onThemeChanged;
+  final ThemeMode? themeMode;
+
+  const MainScreen({super.key, this.onThemeChanged, this.themeMode});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -94,7 +140,10 @@ class _MainScreenState extends State<MainScreen> {
           const SearchScreen(),
           const CategoriesScreen(),
           const SavedScreen(),
-          const ProfileScreen(),
+          ProfileScreen(
+            onThemeChanged: widget.onThemeChanged,
+            themeMode: widget.themeMode,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

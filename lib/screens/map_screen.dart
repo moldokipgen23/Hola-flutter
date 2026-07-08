@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
@@ -69,7 +70,7 @@ class _MapScreenState extends State<MapScreen> {
               ? const Center(child: Text('No businesses with locations'))
               : GoogleMap(
                   initialCameraPosition: const CameraPosition(
-                    target: 23.3521, // Churachandpur approx
+                    target: LatLng(24.8049, 93.9408), // Churachandpur
                     zoom: 13,
                   ),
                   markers: _markers,

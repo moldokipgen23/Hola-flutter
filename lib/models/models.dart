@@ -54,6 +54,8 @@ class Business {
   final int viewsCount;
   final int savesCount;
   final int qualityScore;
+  final double averageRating;
+  final int reviewCount;
   final Category? category;
   final String? claimStatus;
   final String? distance;
@@ -80,6 +82,8 @@ class Business {
     this.viewsCount = 0,
     this.savesCount = 0,
     this.qualityScore = 0,
+    this.averageRating = 0.0,
+    this.reviewCount = 0,
     this.category,
     this.claimStatus,
     this.distance,
@@ -108,6 +112,8 @@ class Business {
       viewsCount: json['views_count'] ?? 0,
       savesCount: json['saves_count'] ?? 0,
       qualityScore: json['quality_score'] ?? 0,
+      averageRating: (json['average_rating'] ?? 0).toDouble(),
+      reviewCount: json['review_count'] ?? 0,
       category: json['category'] != null ? Category.fromJson(json['category']) : null,
       claimStatus: json['claim_status'],
       distance: json['distance']?.toString(),
@@ -150,3 +156,36 @@ class Product {
     );
   }
 }
+
+class Review {
+  final int id;
+  final int userId;
+  final int businessId;
+  final int rating;
+  final String comment;
+  final String userName;
+  final String createdAt;
+
+  Review({
+    required this.id,
+    required this.userId,
+    required this.businessId,
+    required this.rating,
+    this.comment = '',
+    this.userName = '',
+    this.createdAt = '',
+  });
+
+  factory Review.fromJson(Map<String, dynamic> json) {
+    return Review(
+      id: json['id'],
+      userId: json['user_id'],
+      businessId: json['business_id'],
+      rating: json['rating'],
+      comment: json['comment'] ?? '',
+      userName: json['user']?['name'] ?? '',
+      createdAt: json['created_at'] ?? '',
+    );
+  }
+}
+

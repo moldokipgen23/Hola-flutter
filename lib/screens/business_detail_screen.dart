@@ -5,6 +5,9 @@ import '../theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'report_screen.dart';
+import 'review_screen.dart';
+import 'chat_screen.dart';
+import 'payment_screen.dart';
 
 class BusinessDetailScreen extends StatefulWidget {
   final String slug;
@@ -18,6 +21,8 @@ class BusinessDetailScreen extends StatefulWidget {
 class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
   Business? business;
   List<Business> related = [];
+  List<Review> reviews = [];
+  Map<String, dynamic>? reviewStats;
   bool loading = true;
 
   @override
@@ -34,17 +39,34 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
       ]);
 
       if (mounted) {
+        final biz = Business.fromJson(results[0]['business']);
         setState(() {
-          business = Business.fromJson(results[0]['business']);
+          business = biz;
           related = (results[1]['related'] as List).map((b) => Business.fromJson(b)).toList();
           loading = false;
         });
 
         api.post('/businesses/${widget.slug}/track', body: {'action': 'view'});
+
+        _loadReviews(biz.id);
       }
     } catch (e) {
       setState(() => loading = false);
     }
+  }
+
+  Future<void> _loadReviews(int businessId) async {
+    try {
+      final result = await api.get('/businesses/$businessId/reviews');
+      if (mounted) {
+        setState(() {
+          reviewStats = result['stats'];
+          reviews = (result['reviews']?['data'] as List? ?? [])
+              .map((rv) => Review.fromJson(rv))
+              .toList();
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _call() async {
@@ -77,7 +99,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
     try {
       final result = await api.post('/saved/toggle', body: {'business_id': business!.id});
       setState(() {
-        business = Business(
+          business = Business(
           id: business!.id,
           name: business!.name,
           slug: business!.slug,
@@ -98,6 +120,8 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
           viewsCount: business!.viewsCount,
           savesCount: business!.savesCount,
           qualityScore: business!.qualityScore,
+          averageRating: business!.averageRating,
+          reviewCount: business!.reviewCount,
           category: business!.category,
           claimStatus: business!.claimStatus,
           distance: business!.distance,
@@ -208,6 +232,80 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                               )),
                               const SizedBox(height: 20),
                             ],
+                            // ─── Reviews Section ───
+                            if (reviewStats != null) ...[
+                              const Text('Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Text(
+                                    '${reviewStats!['average']}',
+                                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: List.generate(5, (i) => Icon(
+                                          i < (reviewStats!['average'] as num).round()
+                                              ? Icons.star : Icons.star_border,
+                                          color: Colors.amber, size: 18,
+                                        )),
+                                      ),
+                                      Text('${reviewStats!['count']} reviews', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: () => Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => ReviewScreen(business: business!),
+                                    )),
+                                    icon: const Icon(Icons.edit, size: 16),
+                                    label: const Text('Write'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ...reviews.take(3).map((rv) => Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 14,
+                                            child: Text(rv.userName.isNotEmpty ? rv.userName[0] : '?', style: const TextStyle(fontSize: 12)),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Text(rv.userName, style: const TextStyle(fontWeight: FontWeight.w500))),
+                                          Row(
+                                            children: List.generate(5, (i) => Icon(
+                                              i < rv.rating ? Icons.star : Icons.star_border,
+                                              color: Colors.amber, size: 14,
+                                            )),
+                                          ),
+                                        ],
+                                      ),
+                                      if (rv.comment.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(rv.comment, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              )),
+                              if (reviews.length > 3)
+                                TextButton(
+                                  onPressed: () {},
+                                  child: Text('View all ${reviewStats!['count']} reviews'),
+                                ),
+                              const SizedBox(height: 16),
+                            ],
+
                             const Text('Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
                             Row(
@@ -218,8 +316,26 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                                   _buildActionButton(Icons.chat, 'WhatsApp', AppTheme.success, _whatsapp),
                                 if (business!.lat != null)
                                   _buildActionButton(Icons.directions, 'Directions', Colors.blue, _directions),
+                                _buildActionButton(Icons.chat_bubble, 'Message', AppTheme.secondary, () {
+                                  Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => ChatScreen(business: business!),
+                                  ));
+                                }),
                                 _buildActionButton(Icons.share, 'Share', Colors.grey, _share),
                               ],
+                            ),
+                            const SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => const PaymentScreen(),
+                              )),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.star, size: 16, color: Colors.amber[700]),
+                                  const SizedBox(width: 6),
+                                  Text('Promote this business', style: TextStyle(fontSize: 13, color: Colors.amber[700])),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 8),
                             GestureDetector(
