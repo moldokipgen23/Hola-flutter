@@ -106,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         radius: 50,
                         backgroundColor: AppTheme.primary.withOpacity(0.1),
                         child: Text(
-                          (user?['name'] ?? 'U')[0].toUpperCase(),
+                          _initial(user?['name']),
                           style: const TextStyle(fontSize: 32, color: AppTheme.primary),
                         ),
                       ),
@@ -155,6 +155,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
     );
+  }
+
+  String _initial(String? name) {
+    final trimmed = (name ?? '').trim();
+    return trimmed.isEmpty ? 'U' : trimmed[0].toUpperCase();
   }
 
   Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap) {

@@ -24,7 +24,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final result = await api.get('/notifications');
       if (mounted) {
         setState(() {
-          notifications = result['notifications'] ?? [];
+          final raw = result['notifications'];
+          // Backend returns a Laravel paginator: { data: [...], ... }
+          notifications = raw is Map && raw['data'] is List
+              ? List<dynamic>.from(raw['data'])
+              : (raw is List ? raw : []);
           loading = false;
         });
       }

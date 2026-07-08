@@ -4,7 +4,6 @@ import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
 import 'business_detail_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});

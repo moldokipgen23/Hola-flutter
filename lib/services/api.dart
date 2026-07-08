@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://10.0.2.2:8000/api'; // Android emulator
-  // static const String baseUrl = 'http://localhost:8000/api'; // iOS simulator
-  // static const String baseUrl = 'http://192.168.x.x:8000/api'; // Real device
+  static const String baseUrl = AppConfig.apiBaseUrl;
 
   String? _token;
 
@@ -36,35 +35,49 @@ class ApiClient {
     return prefs.getString('auth_token') != null;
   }
 
+  /// Convert a possibly-relative image path (e.g. "storage/photos/x.jpg")
+  /// into an absolute URL using the backend origin.
+  static String imageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final clean = path.startsWith('/') ? path.substring(1) : path;
+    return '${AppConfig.storageBaseUrl}/$clean';
+  }
+
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: await headers);
+    final response = await http
+        .get(uri, headers: await headers)
+        .timeout(const Duration(seconds: 30));
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-      body: body != null ? jsonEncode(body) : null,
-    );
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: await headers,
+          body: body != null ? jsonEncode(body) : null,
+        )
+        .timeout(const Duration(seconds: 30));
     return _handleResponse(response);
   }
 
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-      body: body != null ? jsonEncode(body) : null,
-    );
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl$path'),
+          headers: await headers,
+          body: body != null ? jsonEncode(body) : null,
+        )
+        .timeout(const Duration(seconds: 30));
     return _handleResponse(response);
   }
 
   Future<dynamic> delete(String path) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-    );
+    final response = await http
+        .delete(Uri.parse('$baseUrl$path'), headers: await headers)
+        .timeout(const Duration(seconds: 30));
     return _handleResponse(response);
   }
 
@@ -73,7 +86,8 @@ class ApiClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     }
-    throw Exception(body['message'] ?? 'Something went wrong');
+    final message = body is Map ? (body['message']?.toString() ?? 'Something went wrong') : 'Something went wrong';
+    throw Exception(message);
   }
 }
 

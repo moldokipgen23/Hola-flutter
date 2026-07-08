@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import '../widgets/safe_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'report_screen.dart';
@@ -33,26 +34,32 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
 
   Future<void> _loadBusiness() async {
     try {
-      final results = await Future.wait([
-        api.get('/businesses/${widget.slug}'),
-        api.get('/businesses/${widget.slug}/related'),
-      ]);
+      final res = await api.get('/businesses/${widget.slug}');
+      if (!mounted) return;
 
-      if (mounted) {
-        final biz = Business.fromJson(results[0]['business']);
-        setState(() {
-          business = biz;
-          related = (results[1]['related'] as List).map((b) => Business.fromJson(b)).toList();
-          loading = false;
-        });
+      final biz = Business.fromJson(res['business']);
+      setState(() {
+        business = biz;
+        loading = false;
+      });
 
-        api.post('/businesses/${widget.slug}/track', body: {'action': 'view'});
-
-        _loadReviews(biz.id);
-      }
+      api.post('/businesses/${widget.slug}/track', body: {'action': 'view'});
+      _loadReviews(biz.id);
+      _loadRelated();
     } catch (e) {
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> _loadRelated() async {
+    try {
+      final res = await api.get('/businesses/${widget.slug}/related');
+      if (!mounted) return;
+      final raw = res is Map ? (res['related'] is List ? res['related'] : <dynamic>[]) : <dynamic>[];
+      setState(() {
+        related = (raw as List).map((b) => Business.fromJson(b)).toList();
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadReviews(int businessId) async {
@@ -159,12 +166,11 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                         ),
                       ],
                       flexibleSpace: FlexibleSpaceBar(
-                        background: business!.photos.isNotEmpty
-                            ? Image.network(business!.photos.first, fit: BoxFit.cover)
-                            : Container(
-                                color: AppTheme.primary.withOpacity(0.1),
-                                child: const Center(child: Text('🏪', style: TextStyle(fontSize: 80))),
-                              ),
+                        background: SafeImage(
+                          path: business!.photos.isNotEmpty ? business!.photos.first : null,
+                          fallbackEmoji: '🏪',
+                          emojiSize: 80,
+                        ),
                       ),
                     ),
                     SliverToBoxAdapter(

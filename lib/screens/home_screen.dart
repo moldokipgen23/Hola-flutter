@@ -2,11 +2,41 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import '../widgets/safe_image.dart';
 import 'business_detail_screen.dart';
 import 'category_businesses_screen.dart';
 import 'search_screen.dart';
 import 'map_screen.dart';
 import 'product_list_screen.dart';
+
+/// Fetches a list endpoint and maps its items, tolerating both flat arrays
+/// and nested Laravel shapes ({ key: [...] } or { key: { data: [...] } }).
+/// On any error an empty list is returned so one failing section never
+/// blanks the whole screen.
+Future<List<T>> _safeList<T>(
+  Future<dynamic> call,
+  List<T> Function(List<dynamic>) mapper,
+) async {
+  try {
+    final res = await call;
+    final list = res is List
+        ? res
+        : (res is Map
+            ? _extractList(res)
+            : <dynamic>[]);
+    return mapper(list);
+  } catch (_) {
+    return <T>[];
+  }
+}
+
+List<dynamic> _extractList(Map res) {
+  for (final value in res.values) {
+    if (value is List) return value;
+    if (value is Map && value['data'] is List) return value['data'] as List;
+  }
+  return <dynamic>[];
+}
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onSearchTap;
@@ -32,27 +62,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    try {
-      final results = await Future.wait([
-        api.get('/categories'),
-        api.get('/businesses/featured'),
-        api.get('/businesses/trending'),
-        api.get('/businesses/new'),
-        api.get('/products/popular'),
-      ]);
+    if (mounted) setState(() => loading = true);
 
-      if (mounted) {
-        setState(() {
-          categories = (results[0]['categories'] as List).map((c) => Category.fromJson(c)).toList();
-          featured = (results[1]['businesses'] as List).map((b) => Business.fromJson(b)).toList();
-          trending = (results[2]['businesses'] as List).map((b) => Business.fromJson(b)).toList();
-          newlyAdded = (results[3]['businesses'] as List).map((b) => Business.fromJson(b)).toList();
-          popularProducts = (results[4]['products'] as List).map((p) => Product.fromJson(p)).toList();
-          loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => loading = false);
+    final results = await Future.wait([
+      _safeList(api.get('/categories'), (l) => l.map((c) => Category.fromJson(c)).toList()),
+      _safeList(api.get('/businesses/featured'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+      _safeList(api.get('/businesses/trending'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+      _safeList(api.get('/businesses/new'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+      _safeList(api.get('/products/popular'), (l) => l.map((p) => Product.fromJson(p)).toList()),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        categories = results[0] as List<Category>;
+        featured = results[1] as List<Business>;
+        trending = results[2] as List<Business>;
+        newlyAdded = results[3] as List<Business>;
+        popularProducts = results[4] as List<Product>;
+        loading = false;
+      });
     }
   }
 
@@ -260,12 +288,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: AppTheme.primary.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: product.image != null
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: Image.network(product.image!, fit: BoxFit.cover),
-                                          )
-                                        : const Center(child: Text('📦', style: TextStyle(fontSize: 28))),
+                                    child: SafeImage(
+                                      path: product.image,
+                                      fallbackEmoji: '📦',
+                                      emojiSize: 28,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -312,12 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: business.photos.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(business.photos.first, fit: BoxFit.cover),
-                    )
-                  : const Center(child: Text('🏪', style: TextStyle(fontSize: 28))),
+              child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
             ),
             const SizedBox(width: 12),
             Expanded(

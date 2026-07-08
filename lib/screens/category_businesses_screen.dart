@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import '../widgets/safe_image.dart';
 import 'business_detail_screen.dart';
 
 class CategoryBusinessesScreen extends StatefulWidget {
@@ -75,12 +76,7 @@ class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
                 color: AppTheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: business.photos.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(business.photos.first, fit: BoxFit.cover),
-                    )
-                  : const Center(child: Text('🏪', style: TextStyle(fontSize: 28))),
+            child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
             ),
             const SizedBox(width: 12),
             Expanded(

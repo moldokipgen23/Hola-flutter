@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import '../widgets/safe_image.dart';
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -67,12 +68,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 color: AppTheme.primary.withOpacity(0.1),
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                               ),
-                              child: product.image != null
-                                  ? ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                                      child: Image.network(product.image!, fit: BoxFit.cover),
-                                    )
-                                  : const Center(child: Text('📦', style: TextStyle(fontSize: 40))),
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                child: SafeImage(
+                                  path: product.image,
+                                  fallbackEmoji: '📦',
+                                  emojiSize: 40,
+                                ),
+                              ),
                             ),
                           ),
                           Padding(
