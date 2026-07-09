@@ -85,14 +85,20 @@ class _InitScreenState extends State<_InitScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        MaterialPageRoute(builder: (_) => OnboardingScreen(
+          onThemeChanged: widget.onThemeChanged,
+          themeMode: widget.themeMode,
+        )),
       );
     } else if (!welcomeSeen) {
       await prefs.setBool('welcome_seen', true);
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        MaterialPageRoute(builder: (_) => WelcomeScreen(
+          onThemeChanged: widget.onThemeChanged,
+          themeMode: widget.themeMode,
+        )),
       );
     } else {
       Navigator.pushReplacement(

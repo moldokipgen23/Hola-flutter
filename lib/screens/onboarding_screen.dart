@@ -4,7 +4,10 @@ import '../theme.dart';
 import '../main.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final ValueChanged<ThemeMode>? onThemeChanged;
+  final ThemeMode? themeMode;
+
+  const OnboardingScreen({super.key, this.onThemeChanged, this.themeMode});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -26,7 +29,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+      MaterialPageRoute(builder: (_) => MainScreen(
+        onThemeChanged: widget.onThemeChanged,
+        themeMode: widget.themeMode,
+      )),
     );
   }
 

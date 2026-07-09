@@ -3,12 +3,18 @@ import '../theme.dart';
 import '../main.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  final ValueChanged<ThemeMode>? onThemeChanged;
+  final ThemeMode? themeMode;
+
+  const WelcomeScreen({super.key, this.onThemeChanged, this.themeMode});
 
   void _getStarted(BuildContext context) {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+      MaterialPageRoute(builder: (_) => MainScreen(
+        onThemeChanged: onThemeChanged,
+        themeMode: themeMode,
+      )),
     );
   }
 
