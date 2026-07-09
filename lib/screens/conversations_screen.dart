@@ -84,12 +84,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   onRefresh: _refresh,
                   child: ListView.separated(
                     itemCount: conversations.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, a) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final c = conversations[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppTheme.primary.withOpacity(0.1),
+                          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
                           child: const Text('🏪', style: TextStyle(fontSize: 20)),
                         ),
                         title: Text(c.business.name, style: const TextStyle(fontWeight: FontWeight.w600)),

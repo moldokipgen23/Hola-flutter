@@ -17,6 +17,7 @@ class CategoryBusinessesScreen extends StatefulWidget {
 class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
   List<Business> businesses = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -32,9 +33,10 @@ class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
       setState(() {
         businesses = (businessesList as List).map((b) => Business.fromJson(b)).toList();
         loading = false;
+        error = null;
       });
     } catch (e) {
-      setState(() => loading = false);
+      setState(() { loading = false; error = 'Failed to load businesses. Please try again.'; });
     }
   }
 
@@ -44,13 +46,29 @@ class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
       appBar: AppBar(title: Text(widget.category.name)),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : businesses.isEmpty
-              ? const Center(child: Text('No businesses in this category'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: businesses.length,
-                  itemBuilder: (context, index) => _buildCard(businesses[index]),
-                ),
+          : error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 12),
+                      Text(error!, style: TextStyle(color: Colors.grey[600])),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadBusinesses, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : businesses.isEmpty
+                  ? const Center(child: Text('No businesses in this category'))
+                  : RefreshIndicator(
+                      onRefresh: _loadBusinesses,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: businesses.length,
+                        itemBuilder: (context, index) => _buildCard(businesses[index]),
+                      ),
+                    ),
     );
   }
 
@@ -65,7 +83,7 @@ class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
         ),
         child: Row(
           children: [
@@ -73,10 +91,10 @@ class _CategoryBusinessesScreenState extends State<CategoryBusinessesScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-            child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
+              child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
             ),
             const SizedBox(width: 12),
             Expanded(

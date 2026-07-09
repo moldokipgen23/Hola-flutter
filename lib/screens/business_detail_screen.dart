@@ -78,21 +78,30 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
 
   Future<void> _call() async {
     if (business?.phone != null) {
-      launchUrl(Uri.parse('tel:${business!.phone}'));
+      final uri = Uri.parse('tel:${business!.phone}');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
       api.post('/businesses/${widget.slug}/track', body: {'action': 'call'});
     }
   }
 
   Future<void> _whatsapp() async {
     if (business?.whatsapp != null) {
-      launchUrl(Uri.parse('https://wa.me/${business!.whatsapp}'));
+      final uri = Uri.parse('https://wa.me/${business!.whatsapp}');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
       api.post('/businesses/${widget.slug}/track', body: {'action': 'whatsapp'});
     }
   }
 
   Future<void> _directions() async {
     if (business?.lat != null && business?.lng != null) {
-      launchUrl(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${business!.lat},${business!.lng}'));
+      final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${business!.lat},${business!.lng}');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
       api.post('/businesses/${widget.slug}/track', body: {'action': 'directions'});
     }
   }
@@ -103,6 +112,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
   }
 
   Future<void> _toggleSave() async {
+    if (business == null) return;
     try {
       final result = await api.post('/saved/toggle', body: {'business_id': business!.id});
       setState(() {
@@ -195,7 +205,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.amber.withOpacity(0.1),
+                                      color: Colors.amber.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Row(
@@ -238,7 +248,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                               )),
                               const SizedBox(height: 20),
                             ],
-                            // ─── Reviews Section ───
                             if (reviewStats != null) ...[
                               const Text('Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 8),
@@ -306,7 +315,9 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                               )),
                               if (reviews.length > 3)
                                 TextButton(
-                                  onPressed: () {},
+                                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => ReviewScreen(business: business!),
+                                  )),
                                   child: Text('View all ${reviewStats!['count']} reviews'),
                                 ),
                               const SizedBox(height: 16),
@@ -425,7 +436,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(

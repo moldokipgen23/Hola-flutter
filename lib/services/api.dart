@@ -7,6 +7,8 @@ class ApiClient {
   static const String baseUrl = AppConfig.apiBaseUrl;
 
   String? _token;
+  final http.Client _client = http.Client();
+  static const Duration _timeout = Duration(seconds: 30);
 
   Future<Map<String, String>> get headers async {
     if (_token == null) {
@@ -46,48 +48,62 @@ class ApiClient {
 
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: queryParams);
-    final response = await http
-        .get(uri, headers: await headers)
-        .timeout(const Duration(seconds: 30));
+    final response = await _client.get(uri, headers: await headers).timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final response = await http
-        .post(
-          Uri.parse('$baseUrl$path'),
-          headers: await headers,
-          body: body != null ? jsonEncode(body) : null,
-        )
-        .timeout(const Duration(seconds: 30));
+    final response = await _client.post(
+      Uri.parse('$baseUrl$path'),
+      headers: await headers,
+      body: body != null ? jsonEncode(body) : null,
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
-    final response = await http
-        .put(
-          Uri.parse('$baseUrl$path'),
-          headers: await headers,
-          body: body != null ? jsonEncode(body) : null,
-        )
-        .timeout(const Duration(seconds: 30));
+    final response = await _client.put(
+      Uri.parse('$baseUrl$path'),
+      headers: await headers,
+      body: body != null ? jsonEncode(body) : null,
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> delete(String path) async {
-    final response = await http
-        .delete(Uri.parse('$baseUrl$path'), headers: await headers)
-        .timeout(const Duration(seconds: 30));
+    final response = await _client.delete(
+      Uri.parse('$baseUrl$path'),
+      headers: await headers,
+    ).timeout(_timeout);
     return _handleResponse(response);
   }
 
   dynamic _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return body;
+    if (response.statusCode == 401) {
+      _token = null;
+      SharedPreferences.getInstance().then((prefs) => prefs.remove('auth_token'));
+      throw Exception('Session expired. Please login again.');
     }
-    final message = body is Map ? (body['message']?.toString() ?? 'Something went wrong') : 'Something went wrong';
-    throw Exception(message);
+
+    final contentType = response.headers['content-type'] ?? '';
+    if (!contentType.contains('application/json')) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {};
+      }
+      throw Exception('Server error (${response.statusCode})');
+    }
+
+    try {
+      final body = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return body;
+      }
+      final message = body is Map ? (body['message']?.toString() ?? 'Something went wrong') : 'Something went wrong';
+      throw Exception(message);
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Failed to parse server response');
+    }
   }
 }
 

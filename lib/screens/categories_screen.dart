@@ -14,6 +14,7 @@ class CategoriesScreen extends StatefulWidget {
 class _CategoriesScreenState extends State<CategoriesScreen> {
   List<Category> categories = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -27,9 +28,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       setState(() {
         categories = (result['categories'] as List).map((c) => Category.fromJson(c)).toList();
         loading = false;
+        error = null;
       });
     } catch (e) {
-      setState(() => loading = false);
+      setState(() { loading = false; error = 'Failed to load categories. Please try again.'; });
     }
   }
 
@@ -39,42 +41,58 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       appBar: AppBar(title: const Text('Categories')),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                return GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => CategoryBusinessesScreen(category: cat),
-                  )),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(cat.icon ?? '🏪', style: const TextStyle(fontSize: 32)),
-                        const SizedBox(height: 8),
-                        Text(
-                          cat.name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
+          : error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 12),
+                      Text(error!, style: TextStyle(color: Colors.grey[600])),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadCategories, child: const Text('Retry')),
+                    ],
                   ),
-                );
-              },
-            ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadCategories,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                    ),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final cat = categories[index];
+                      return GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => CategoryBusinessesScreen(category: cat),
+                        )),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(cat.icon ?? '🏪', style: const TextStyle(fontSize: 32)),
+                              const SizedBox(height: 8),
+                              Text(
+                                cat.name,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }

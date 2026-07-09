@@ -17,35 +17,38 @@ class _SearchScreenState extends State<SearchScreen> {
   List<String> suggestions = [];
   bool loading = false;
   bool searched = false;
+  String? error;
 
   void _search(String query) async {
-    if (query.length < 2) return;
-    setState(() => loading = true);
+    if (query.trim().length < 2) return;
+    setState(() { loading = true; error = null; });
 
     try {
-      final result = await api.get('/search', queryParams: {'q': query});
+      final result = await api.get('/search', queryParams: {'q': query.trim()});
       setState(() {
         results = (result['businesses'] as List).map((b) => Business.fromJson(b)).toList();
         searched = true;
         loading = false;
       });
     } catch (e) {
-      setState(() => loading = false);
+      setState(() { loading = false; error = 'Search failed. Please try again.'; });
     }
   }
 
   void _loadSuggestions(String query) async {
-    if (query.length < 2) {
+    if (query.trim().length < 2) {
       setState(() => suggestions = []);
       return;
     }
 
     try {
-      final result = await api.get('/search/suggestions', queryParams: {'q': query});
+      final result = await api.get('/search/suggestions', queryParams: {'q': query.trim()});
       setState(() {
         suggestions = List<String>.from(result['suggestions'] ?? []);
       });
-    } catch (e) {}
+    } catch (e) {
+      // Suggestions are optional, silently ignore errors
+    }
   }
 
   @override
@@ -93,15 +96,28 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
                 Expanded(
-                  child: !searched
-                      ? const Center(child: Text('Search for businesses'))
-                      : results.isEmpty
-                          ? const Center(child: Text('No results found'))
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: results.length,
-                              itemBuilder: (context, index) => _buildCard(results[index]),
-                            ),
+                  child: error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                              const SizedBox(height: 12),
+                              Text(error!, style: TextStyle(color: Colors.grey[600])),
+                              const SizedBox(height: 12),
+                              ElevatedButton(onPressed: () => _search(_controller.text), child: const Text('Retry')),
+                            ],
+                          ),
+                        )
+                      : !searched
+                          ? const Center(child: Text('Search for businesses'))
+                          : results.isEmpty
+                              ? const Center(child: Text('No results found'))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: results.length,
+                                  itemBuilder: (context, index) => _buildCard(results[index]),
+                                ),
                 ),
               ],
             ),
@@ -119,7 +135,7 @@ class _SearchScreenState extends State<SearchScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
         ),
         child: Row(
           children: [
@@ -127,7 +143,7 @@ class _SearchScreenState extends State<SearchScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(child: Text('🏪', style: TextStyle(fontSize: 24))),

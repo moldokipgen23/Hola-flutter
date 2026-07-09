@@ -112,7 +112,7 @@ class Business {
       viewsCount: json['views_count'] ?? 0,
       savesCount: json['saves_count'] ?? 0,
       qualityScore: json['quality_score'] ?? 0,
-      averageRating: (json['average_rating'] ?? 0).toDouble(),
+      averageRating: json['average_rating'] != null ? (json['average_rating'] is num ? (json['average_rating'] as num).toDouble() : double.tryParse(json['average_rating'].toString()) ?? 0.0) : 0.0,
       reviewCount: json['review_count'] ?? 0,
       category: json['category'] != null ? Category.fromJson(json['category']) : null,
       claimStatus: json['claim_status'],

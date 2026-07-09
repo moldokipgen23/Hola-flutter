@@ -134,7 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (n['body'] != null) Text(n['body'], maxLines: 2, overflow: TextOverflow.ellipsis),
+                              if (n['body'] != null) Text(n['body'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 4),
                               Text(_timeAgo(n['created_at']), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                             ],

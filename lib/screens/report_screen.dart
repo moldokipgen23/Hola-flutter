@@ -64,7 +64,7 @@ class _ReportScreenState extends State<ReportScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -78,14 +78,25 @@ class _ReportScreenState extends State<ReportScreen> {
             const SizedBox(height: 24),
             const Text('What is the issue?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            ..._reportTypes.map((type) => RadioListTile<String>(
-              title: Text(type['label']!),
-              value: type['value']!,
+            RadioGroup<String>(
               groupValue: _selectedType,
-              onChanged: (value) => setState(() => _selectedType = value!),
-              activeColor: AppTheme.primary,
-              contentPadding: EdgeInsets.zero,
-            )),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedType = value);
+                }
+              },
+              child: Column(
+                children: _reportTypes.map((type) => ListTile(
+                  title: Text(type['label']!),
+                  leading: Radio<String>(
+                    value: type['value']!,
+                    activeColor: AppTheme.primary,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () => setState(() => _selectedType = type['value']!),
+                )).toList(),
+              ),
+            ),
             const SizedBox(height: 16),
             const Text('Additional details (optional)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),

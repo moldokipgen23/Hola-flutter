@@ -15,6 +15,7 @@ class _SavedScreenState extends State<SavedScreen> {
   List<Business> saved = [];
   bool loading = true;
   bool loggedIn = false;
+  String? error;
 
   @override
   void initState() {
@@ -39,11 +40,13 @@ class _SavedScreenState extends State<SavedScreen> {
         saved = savedList.map((item) => Business.fromJson(item['business'])).toList();
         loggedIn = true;
         loading = false;
+        error = null;
       });
     } catch (e) {
       setState(() {
         loggedIn = false;
         loading = false;
+        error = 'Failed to load saved businesses. Please try again.';
       });
     }
   }
@@ -54,13 +57,17 @@ class _SavedScreenState extends State<SavedScreen> {
       setState(() {
         saved.removeWhere((b) => b.id == business.id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Removed from saved')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Removed from saved')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove'), backgroundColor: AppTheme.error),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to remove'), backgroundColor: AppTheme.error),
+        );
+      }
     }
   }
 
@@ -92,60 +99,63 @@ class _SavedScreenState extends State<SavedScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: saved.length,
-                      itemBuilder: (context, index) {
-                        final business = saved[index];
-                        return Dismissible(
-                          key: Key(business.id.toString()),
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 16),
-                            color: AppTheme.error,
-                            child: const Icon(Icons.delete, color: Colors.white),
-                          ),
-                          onDismissed: (_) => _removeSaved(business),
-                          child: GestureDetector(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BusinessDetailScreen(slug: business.slug),
-                            )),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
+                  : RefreshIndicator(
+                      onRefresh: _loadSaved,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: saved.length,
+                        itemBuilder: (context, index) {
+                          final business = saved[index];
+                          return Dismissible(
+                            key: Key(business.id.toString()),
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 16),
+                              color: AppTheme.error,
+                              child: const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            onDismissed: (_) => _removeSaved(business),
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => BusinessDetailScreen(slug: business.slug),
+                              )),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Center(child: Text('🏪', style: TextStyle(fontSize: 24))),
                                     ),
-                                    child: const Center(child: Text('🏪', style: TextStyle(fontSize: 24))),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(business.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        const SizedBox(height: 4),
-                                        Text(business.address ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                                      ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(business.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 4),
+                                          Text(business.address ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
     );
   }

@@ -6,6 +6,7 @@ import 'settings_screen.dart';
 import 'notifications_screen.dart';
 import 'conversations_screen.dart';
 import 'owner_dashboard_screen.dart';
+import 'saved_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ValueChanged<ThemeMode>? onThemeChanged;
@@ -56,7 +57,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     try {
       await api.post('/auth/logout');
-    } catch (e) {}
+    } catch (e) {
+      // Logout may fail on server side, but we still clear local token
+    }
     await api.setToken(null);
     setState(() {
       user = null;
@@ -104,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: AppTheme.primary.withOpacity(0.1),
+                        backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
                         child: Text(
                           _initial(user?['name']),
                           style: const TextStyle(fontSize: 32, color: AppTheme.primary),
@@ -130,9 +133,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           builder: (_) => const NotificationsScreen(),
                         ));
                       }),
-                      _buildMenuItem(Icons.bookmark, 'My Saved', () {}),
-                      _buildMenuItem(Icons.business, 'My Claims', () {}),
-                      _buildMenuItem(Icons.report, 'My Reports', () {}),
+                      _buildMenuItem(Icons.bookmark, 'My Saved', () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => const SavedScreen(),
+                        ));
+                      }),
+                      _buildMenuItem(Icons.business, 'My Claims', () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Claims feature coming soon'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }),
+                      _buildMenuItem(Icons.report, 'My Reports', () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Reports feature coming soon'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }),
                       _buildMenuItem(Icons.settings, 'Settings', () {
                         Navigator.push(context, MaterialPageRoute(
                           builder: (_) => SettingsScreen(
@@ -141,7 +162,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ));
                       }),
-                      _buildMenuItem(Icons.help, 'Help', () {}),
+                      _buildMenuItem(Icons.help, 'Help', () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Help & Support'),
+                            content: const Text('For any questions or issues, please contact us at support@hola.app'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,

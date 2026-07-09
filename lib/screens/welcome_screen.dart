@@ -26,7 +26,7 @@ class WelcomeScreen extends StatelessWidget {
                 width: 160,
                 height: 160,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(40),
                 ),
                 child: const Center(

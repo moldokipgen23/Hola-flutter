@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Business> newlyAdded = [];
   List<Product> popularProducts = [];
   bool loading = true;
-  bool loadError = false;
+  String? error;
 
   @override
   void initState() {
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() {
         loading = true;
-        loadError = false;
+        error = null;
       });
     }
 
@@ -90,15 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
           newlyAdded = nw;
           popularProducts = pop;
           loading = false;
+          error = null;
         });
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          loading = false;
-          loadError = true;
-        });
-      }
+    } catch (e) {
+      if (mounted) setState(() { loading = false; error = 'Failed to load data. Please try again.'; });
     }
   }
 
@@ -109,14 +105,14 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _loadData,
         child: loading
             ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-            : loadError
+            : error != null
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
                         const SizedBox(height: 16),
-                        const Text('Could not load content', style: TextStyle(color: Colors.grey)),
+                        Text(error!, style: TextStyle(color: Colors.grey[600]), textAlign: TextAlign.center),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: _loadData,
@@ -126,227 +122,227 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   )
                 : CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    floating: true,
-                    title: const Text('Hola', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: widget.onSearchTap ?? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())),
+                    slivers: [
+                      SliverAppBar(
+                        floating: true,
+                        title: const Text('Hola', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: widget.onSearchTap ?? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: GestureDetector(
-                        onTap: widget.onSearchTap,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                          child: const Row(
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: GestureDetector(
+                            onTap: widget.onSearchTap,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.search, color: Colors.grey),
+                                  SizedBox(width: 12),
+                                  Text('Search businesses...', style: TextStyle(color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
                             children: [
-                              Icon(Icons.search, color: Colors.grey),
-                              SizedBox(width: 12),
-                              Text('Search businesses...', style: TextStyle(color: Colors.grey)),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MapScreen())),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.map, color: AppTheme.primary, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Map View', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen())),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Products', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MapScreen())),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              final cat = categories[index];
+                              return GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(
+                                  builder: (_) => CategoryBusinessesScreen(category: cat),
+                                )),
+                                child: Container(
+                                  width: 80,
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Center(
+                                          child: Text(cat.icon ?? '🏪', style: const TextStyle(fontSize: 28)),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        cat.name,
+                                        style: const TextStyle(fontSize: 12),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.map, color: AppTheme.primary, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Map View', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductListScreen())),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Products', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 100,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final cat = categories[index];
-                          return GestureDetector(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => CategoryBusinessesScreen(category: cat),
-                            )),
-                            child: Container(
-                              width: 80,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Center(
-                                      child: Text(cat.icon ?? '🏪', style: const TextStyle(fontSize: 28)),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    cat.name,
-                                    style: const TextStyle(fontSize: 12),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  if (featured.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-                        child: Text('Featured', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildBusinessCard(featured[index]),
-                        childCount: featured.length,
-                      ),
-                    ),
-                  ],
-                  if (trending.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-                        child: Text('Trending', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildBusinessCard(trending[index]),
-                        childCount: trending.length,
-                      ),
-                    ),
-                  ],
-                  if (newlyAdded.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-                        child: Text('Newly Added', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildBusinessCard(newlyAdded[index]),
-                        childCount: newlyAdded.length,
-                      ),
-                    ),
-                  ],
-                  if (popularProducts.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-                        child: Text('Popular Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 120,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: popularProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = popularProducts[index];
-                            return Container(
-                              width: 100,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: SafeImage(
-                                      path: product.image,
-                                      fallbackEmoji: '📦',
-                                      emojiSize: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    product.name,
-                                    style: const TextStyle(fontSize: 11),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
                         ),
                       ),
-                    ),
-                  ],
-                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
-                ],
-              ),
+                      if (featured.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
+                            child: Text('Featured', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => _buildBusinessCard(featured[index]),
+                            childCount: featured.length,
+                          ),
+                        ),
+                      ],
+                      if (trending.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
+                            child: Text('Trending', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => _buildBusinessCard(trending[index]),
+                            childCount: trending.length,
+                          ),
+                        ),
+                      ],
+                      if (newlyAdded.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
+                            child: Text('Newly Added', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => _buildBusinessCard(newlyAdded[index]),
+                            childCount: newlyAdded.length,
+                          ),
+                        ),
+                      ],
+                      if (popularProducts.isNotEmpty) ...[
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
+                            child: Text('Popular Products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: 120,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              itemCount: popularProducts.length,
+                              itemBuilder: (context, index) {
+                                final product = popularProducts[index];
+                                return Container(
+                                  width: 100,
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 80,
+                                        height: 80,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: SafeImage(
+                                          path: product.image,
+                                          fallbackEmoji: '📦',
+                                          emojiSize: 28,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        product.name,
+                                        style: const TextStyle(fontSize: 11),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                    ],
+                  ),
       ),
     );
   }
@@ -362,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
@@ -370,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
