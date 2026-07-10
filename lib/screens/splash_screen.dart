@@ -34,6 +34,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         );
       }
     });
+
+    // Safety timeout: if navigation hasn't happened in 5s, force it
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => widget.nextScreen),
+        );
+      }
+    });
   }
 
   @override

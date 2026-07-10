@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import '../widgets/safe_image.dart';
 import 'business_detail_screen.dart';
 
 class SavedScreen extends StatefulWidget {
@@ -123,7 +124,6 @@ class _SavedScreenState extends State<SavedScreen> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
                                 ),
@@ -136,7 +136,7 @@ class _SavedScreenState extends State<SavedScreen> {
                                         color: AppTheme.primary.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Center(child: Text('🏪', style: TextStyle(fontSize: 24))),
+                                      child: SafeImage(path: business.photos.isNotEmpty ? business.photos.first : null),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(

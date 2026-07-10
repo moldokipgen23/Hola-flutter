@@ -22,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? user;
   bool loading = true;
   bool loggedIn = false;
+  String? error;
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         loggedIn = false;
         loading = false;
+        error = 'Failed to load profile. Please try again.';
       });
     }
   }
@@ -83,6 +85,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : error != null && !loggedIn
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadProfile, child: const Text('Retry')),
+                    ],
+                  ),
+                )
           : !loggedIn
               ? Center(
                   child: Column(

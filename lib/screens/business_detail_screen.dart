@@ -43,7 +43,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
         loading = false;
       });
 
-      api.post('/businesses/${widget.slug}/track', body: {'action': 'view'});
+      try { api.post('/businesses/${widget.slug}/track', body: {'action': 'view'}); } catch (_) {}
       _loadReviews(biz.id);
       _loadRelated();
     } catch (e) {
@@ -82,7 +82,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
-      api.post('/businesses/${widget.slug}/track', body: {'action': 'call'});
+      try { api.post('/businesses/${widget.slug}/track', body: {'action': 'call'}); } catch (_) {}
     }
   }
 
@@ -92,7 +92,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
-      api.post('/businesses/${widget.slug}/track', body: {'action': 'whatsapp'});
+      try { api.post('/businesses/${widget.slug}/track', body: {'action': 'whatsapp'}); } catch (_) {}
     }
   }
 
@@ -102,13 +102,13 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
-      api.post('/businesses/${widget.slug}/track', body: {'action': 'directions'});
+      try { api.post('/businesses/${widget.slug}/track', body: {'action': 'directions'}); } catch (_) {}
     }
   }
 
   void _share() {
     Share.share('Check out ${business?.name} on Hola!\nhttps://hola.app/business/${business?.slug}');
-    api.post('/businesses/${widget.slug}/track', body: {'action': 'share'});
+    try { api.post('/businesses/${widget.slug}/track', body: {'action': 'share'}); } catch (_) {}
   }
 
   Future<void> _toggleSave() async {
@@ -395,7 +395,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen> {
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Text('🏪', style: TextStyle(fontSize: 24)),
+                                            SafeImage(path: r.photos.isNotEmpty ? r.photos.first : null),
                                             const SizedBox(height: 4),
                                             Text(r.name, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                                           ],

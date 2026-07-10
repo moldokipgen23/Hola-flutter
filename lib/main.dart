@@ -81,7 +81,6 @@ class _InitScreenState extends State<_InitScreen> {
     if (!mounted) return;
 
     if (!onboardingSeen) {
-      await prefs.setBool('onboarding_seen', true);
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -91,7 +90,6 @@ class _InitScreenState extends State<_InitScreen> {
         )),
       );
     } else if (!welcomeSeen) {
-      await prefs.setBool('welcome_seen', true);
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

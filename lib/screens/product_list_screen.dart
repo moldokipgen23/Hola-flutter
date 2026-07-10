@@ -71,7 +71,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           final product = products[index];
                           return Container(
                             decoration: BoxDecoration(
-                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
                             ),

@@ -40,6 +40,7 @@ class ConversationsScreen extends StatefulWidget {
 class _ConversationsScreenState extends State<ConversationsScreen> {
   List<_Conversation> conversations = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => loading = false);
+      if (mounted) setState(() { loading = false; error = 'Failed to load conversations.'; });
     }
   }
 
@@ -78,8 +79,21 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       appBar: AppBar(title: const Text('Conversations')),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : conversations.isEmpty
-              ? const Center(child: Text('No conversations yet'))
+          : error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : conversations.isEmpty
+                  ? const Center(child: Text('No conversations yet'))
               : RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView.separated(

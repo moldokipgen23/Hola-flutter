@@ -71,24 +71,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      final cats = await _safeList(
-          api.get('/categories'), (l) => l.map((c) => Category.fromJson(c)).toList());
-      final feat = await _safeList(
-          api.get('/businesses/featured'), (l) => l.map((b) => Business.fromJson(b)).toList());
-      final trnd = await _safeList(
-          api.get('/businesses/trending'), (l) => l.map((b) => Business.fromJson(b)).toList());
-      final nw = await _safeList(
-          api.get('/businesses/new'), (l) => l.map((b) => Business.fromJson(b)).toList());
-      final pop = await _safeList(
-          api.get('/products/popular'), (l) => l.map((p) => Product.fromJson(p)).toList());
+      final results = await Future.wait([
+        _safeList(
+            api.get('/categories'), (l) => l.map((c) => Category.fromJson(c)).toList()),
+        _safeList(
+            api.get('/businesses/featured'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+        _safeList(
+            api.get('/businesses/trending'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+        _safeList(
+            api.get('/businesses/new'), (l) => l.map((b) => Business.fromJson(b)).toList()),
+        _safeList(
+            api.get('/products/popular'), (l) => l.map((p) => Product.fromJson(p)).toList()),
+      ]);
 
       if (mounted) {
         setState(() {
-          categories = cats;
-          featured = feat;
-          trending = trnd;
-          newlyAdded = nw;
-          popularProducts = pop;
+          categories = results[0] as List<Category>;
+          featured = results[1] as List<Business>;
+          trending = results[2] as List<Business>;
+          newlyAdded = results[3] as List<Business>;
+          popularProducts = results[4] as List<Product>;
           loading = false;
           error = null;
         });
@@ -356,7 +358,6 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
         ),

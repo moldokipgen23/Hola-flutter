@@ -15,6 +15,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   List<Business> businesses = [];
   bool loading = true;
+  String? error;
   final Set<Marker> _markers = {};
   GoogleMapController? _mapController;
 
@@ -34,7 +35,7 @@ class _MapScreenState extends State<MapScreen> {
         loading = false;
       });
     } catch (e) {
-      setState(() => loading = false);
+      if (mounted) setState(() { loading = false; error = 'Failed to load businesses'; });
     }
   }
 
@@ -65,8 +66,21 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(title: const Text('Map View')),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : businesses.isEmpty
-              ? const Center(child: Text('No businesses with locations'))
+          : error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadBusinesses, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : businesses.isEmpty
+                  ? const Center(child: Text('No businesses with locations'))
               : GoogleMap(
                   initialCameraPosition: const CameraPosition(
                     target: LatLng(24.8049, 93.9408), // Churachandpur

@@ -12,6 +12,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> notifications = [];
   bool loading = true;
+  String? error;
 
   @override
   void initState() {
@@ -34,7 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => loading = false);
+        setState(() { loading = false; error = 'Failed to load notifications.'; });
       }
     }
   }
@@ -99,17 +100,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : notifications.isEmpty
-              ? const Center(
+          : error != null
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.notifications_outlined, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('No notifications yet', style: TextStyle(color: Colors.grey)),
+                      const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _loadNotifications, child: const Text('Retry')),
                     ],
                   ),
                 )
+              : notifications.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.notifications_outlined, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('No notifications yet', style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    )
               : RefreshIndicator(
                   onRefresh: _loadNotifications,
                   child: ListView.builder(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 import '../main.dart';
 
@@ -8,7 +9,10 @@ class WelcomeScreen extends StatelessWidget {
 
   const WelcomeScreen({super.key, this.onThemeChanged, this.themeMode});
 
-  void _getStarted(BuildContext context) {
+  void _getStarted(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('welcome_seen', true);
+    if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => MainScreen(
@@ -21,7 +25,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -45,7 +48,6 @@ class WelcomeScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -54,7 +56,7 @@ class WelcomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
                 ),
               ),
