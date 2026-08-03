@@ -6,11 +6,15 @@
 // development. Replace the defaults (or pass --dart-define) for production.
 
 class AppConfig {
-  static const String apiBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: 'https://hola.ehlom.com/api');
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://hola.ehlom.com/api',
+  );
 
-  static const String googleMapsApiKey =
-      String.fromEnvironment('GOOGLE_MAPS_API_KEY', defaultValue: '');
+  static const String googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: '',
+  );
 
   /// Public origin used to turn backend-relative storage paths
   /// (e.g. "storage/photos/foo.jpg") into absolute URLs.

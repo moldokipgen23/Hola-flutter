@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/api.dart';
 
-/// Image.network that prepends the backend origin to relative storage paths
-/// and shows a graceful fallback instead of throwing on a broken URL.
 class SafeImage extends StatelessWidget {
   final String? path;
   final double? width;
@@ -27,16 +26,13 @@ class SafeImage extends StatelessWidget {
     if (url.isEmpty) {
       return _fallback();
     }
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url,
       width: width,
       height: height,
       fit: fit,
-      errorBuilder: (_, _, _) => _fallback(),
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return _fallback();
-      },
+      placeholder: (context, url) => _fallback(),
+      errorWidget: (context, url, error) => _fallback(),
     );
   }
 
@@ -44,7 +40,9 @@ class SafeImage extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      child: Center(child: Text(fallbackEmoji, style: TextStyle(fontSize: emojiSize))),
+      child: Center(
+        child: Text(fallbackEmoji, style: TextStyle(fontSize: emojiSize)),
+      ),
     );
   }
 }

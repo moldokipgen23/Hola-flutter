@@ -1,19 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
 
 class ApiClient {
   static const String baseUrl = AppConfig.apiBaseUrl;
+  static const _storage = FlutterSecureStorage();
+  static const _tokenKey = 'auth_token';
 
   String? _token;
-  final http.Client _client = http.Client();
+  http.Client client;
   static const Duration _timeout = Duration(seconds: 30);
+
+  ApiClient({http.Client? httpClient}) : client = httpClient ?? http.Client();
 
   Future<Map<String, String>> get headers async {
     if (_token == null) {
-      final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString('auth_token');
+      try {
+        _token = await _storage
+            .read(key: _tokenKey)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        _token = null;
+      }
     }
     return {
       'Content-Type': 'application/json',
@@ -24,17 +33,28 @@ class ApiClient {
 
   Future<void> setToken(String? token) async {
     _token = token;
-    final prefs = await SharedPreferences.getInstance();
-    if (token != null) {
-      await prefs.setString('auth_token', token);
-    } else {
-      await prefs.remove('auth_token');
-    }
+    try {
+      if (token != null) {
+        await _storage
+            .write(key: _tokenKey, value: token)
+            .timeout(const Duration(seconds: 3));
+      } else {
+        await _storage
+            .delete(key: _tokenKey)
+            .timeout(const Duration(seconds: 3));
+      }
+    } catch (_) {}
   }
 
   Future<bool> hasToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token') != null;
+    try {
+      final token = await _storage
+          .read(key: _tokenKey)
+          .timeout(const Duration(seconds: 3));
+      return token != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Convert a possibly-relative image path (e.g. "storage/photos/x.jpg")
@@ -47,41 +67,48 @@ class ApiClient {
   }
 
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
-    final uri = Uri.parse('$baseUrl$path').replace(queryParameters: queryParams);
-    final response = await _client.get(uri, headers: await headers).timeout(_timeout);
+    final uri = Uri.parse(
+      '$baseUrl$path',
+    ).replace(queryParameters: queryParams);
+    final response = await client
+        .get(uri, headers: await headers)
+        .timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final response = await _client.post(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-      body: body != null ? jsonEncode(body) : null,
-    ).timeout(_timeout);
+    final response = await client
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: await headers,
+          body: body != null ? jsonEncode(body) : null,
+        )
+        .timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
-    final response = await _client.put(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-      body: body != null ? jsonEncode(body) : null,
-    ).timeout(_timeout);
+    final response = await client
+        .put(
+          Uri.parse('$baseUrl$path'),
+          headers: await headers,
+          body: body != null ? jsonEncode(body) : null,
+        )
+        .timeout(_timeout);
     return _handleResponse(response);
   }
 
   Future<dynamic> delete(String path) async {
-    final response = await _client.delete(
-      Uri.parse('$baseUrl$path'),
-      headers: await headers,
-    ).timeout(_timeout);
+    final response = await client
+        .delete(Uri.parse('$baseUrl$path'), headers: await headers)
+        .timeout(_timeout);
     return _handleResponse(response);
   }
 
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode == 401) {
       _token = null;
-      SharedPreferences.getInstance().then((prefs) => prefs.remove('auth_token'));
+      _storage.delete(key: _tokenKey);
       throw Exception('Session expired. Please login again.');
     }
 
@@ -98,7 +125,9 @@ class ApiClient {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return body;
       }
-      final message = body is Map ? (body['message']?.toString() ?? 'Something went wrong') : 'Something went wrong';
+      final message = body is Map
+          ? (body['message']?.toString() ?? 'Something went wrong')
+          : 'Something went wrong';
       throw Exception(message);
     } catch (e) {
       if (e is Exception) rethrow;

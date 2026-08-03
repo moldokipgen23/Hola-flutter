@@ -29,10 +29,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => MainScreen(
-        onThemeChanged: widget.onThemeChanged,
-        themeMode: widget.themeMode,
-      )),
+      MaterialPageRoute(
+        builder: (_) => MainScreen(
+          onThemeChanged: widget.onThemeChanged,
+          themeMode: widget.themeMode,
+        ),
+      ),
     );
   }
 
@@ -50,17 +52,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _OnboardingPage(
                     emoji: '🔍',
                     title: 'Discover Local Businesses',
-                    subtitle: 'Explore businesses, services, and products in Lamka / Churachandpur. Find exactly what you need near you.',
+                    subtitle:
+                        'Explore businesses, services, and products in Lamka / Churachandpur. Find exactly what you need near you.',
                   ),
                   _OnboardingPage(
                     emoji: '💬',
                     title: 'Connect & Engage',
-                    subtitle: 'Call, message, or leave reviews for local businesses. Stay connected with your community.',
+                    subtitle:
+                        'Call, message, or leave reviews for local businesses. Stay connected with your community.',
                   ),
                   _OnboardingPage(
                     emoji: '❤️',
                     title: 'Support Local',
-                    subtitle: 'Help your local economy thrive. Every discovery makes a difference for small businesses.',
+                    subtitle:
+                        'Help your local economy thrive. Every discovery makes a difference for small businesses.',
                   ),
                 ],
               ),
@@ -75,7 +80,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: _currentPage == index ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _currentPage == index ? AppTheme.primary : Colors.grey[300],
+                    color: _currentPage == index
+                        ? AppTheme.primary
+                        : Colors.grey[300],
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -98,7 +105,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         child: const Text(
                           'Get Started',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     )
@@ -120,7 +130,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         child: const Text(
                           'Next',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -166,10 +179,7 @@ class _OnboardingPage extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Text(

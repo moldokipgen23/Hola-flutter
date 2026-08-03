@@ -15,10 +15,10 @@ class WelcomeScreen extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => MainScreen(
-        onThemeChanged: onThemeChanged,
-        themeMode: themeMode,
-      )),
+      MaterialPageRoute(
+        builder: (_) =>
+            MainScreen(onThemeChanged: onThemeChanged, themeMode: themeMode),
+      ),
     );
   }
 
@@ -44,11 +44,8 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 48),
               const Text(
-                'Welcome to Hola',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+                'Welcome to Eiho One',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Text(

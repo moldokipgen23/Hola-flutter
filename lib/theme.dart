@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Primary colors — matching website
-  static const Color primary = Color(0xFF3B82F6);
-  static const Color primaryDark = Color(0xFF2563EB);
-  static const Color primaryLight = Color(0xFF60A5FA);
-  static const Color accent = Color(0xFF8B5CF6);
+  // Primary colors — matching prototype purple theme
+  static const Color primary = Color(0xFF7C4DFF);
+  static const Color primaryDark = Color(0xFF4D2CA8);
+  static const Color primaryLight = Color(0xFFA17DFF);
+  static const Color accent = Color(0xFFFF7043);
   static const Color background = Color(0xFFF8FAFC);
   static const Color surface = Colors.white;
   static const Color textPrimary = Color(0xFF1E293B);
@@ -18,7 +18,11 @@ class AppTheme {
 
   // Card shadows
   static List<BoxShadow> get cardShadow => [
-    BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
   ];
 
   static ThemeData get theme => ThemeData(
@@ -81,7 +85,11 @@ class AppTheme {
       indicatorColor: primary.withValues(alpha: 0.1),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const TextStyle(color: primary, fontWeight: FontWeight.w600, fontSize: 12);
+          return const TextStyle(
+            color: primary,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          );
         }
         return TextStyle(color: Colors.grey[500], fontSize: 12);
       }),

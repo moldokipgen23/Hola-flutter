@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.hola" "\0"
-            VALUE "FileDescription", "hola" "\0"
+            VALUE "CompanyName", "com.eihoone" "\0"
+            VALUE "FileDescription", "Eiho One" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "hola" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.hola. All rights reserved." "\0"
-            VALUE "OriginalFilename", "hola.exe" "\0"
-            VALUE "ProductName", "hola" "\0"
+            VALUE "InternalName", "eiho_one" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.eihoone. All rights reserved." "\0"
+            VALUE "OriginalFilename", "eiho_one.exe" "\0"
+            VALUE "ProductName", "Eiho One" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

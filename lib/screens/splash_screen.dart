@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
@@ -10,9 +12,13 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+  Timer? _navigationTimer;
+  Timer? _safetyTimer;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -21,29 +27,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => widget.nextScreen),
-        );
-      }
-    });
+    _navigationTimer = Timer(const Duration(seconds: 2), _navigateNext);
 
     // Safety timeout: if navigation hasn't happened in 5s, force it
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => widget.nextScreen),
-        );
-      }
-    });
+    _safetyTimer = Timer(const Duration(seconds: 5), _navigateNext);
+  }
+
+  void _navigateNext() {
+    if (!mounted || _navigated) return;
+    _navigated = true;
+    _navigationTimer?.cancel();
+    _safetyTimer?.cancel();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => widget.nextScreen),
+    );
   }
 
   @override
@@ -64,11 +68,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Center(
-                  child: Text('Hola', style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primary,
-                  )),
+                  child: Text(
+                    'Eiho One',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -83,10 +90,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               const SizedBox(height: 8),
               const Text(
                 'Discover local businesses',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.white70),
               ),
             ],
           ),
@@ -97,6 +101,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
+    _safetyTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

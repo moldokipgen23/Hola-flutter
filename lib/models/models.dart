@@ -1,3 +1,11 @@
+import 'booking.dart';
+import 'vehicle.dart';
+
+export 'booking.dart' show Booking, Service;
+export 'order.dart' show Order, OrderItem;
+export 'vehicle.dart' show Vehicle, Trip, DeliveryZone, TimeSlot;
+export 'user.dart' show User;
+
 class Category {
   final int id;
   final String name;
@@ -7,6 +15,7 @@ class Category {
   final bool isActive;
   final bool isFeatured;
   final int businessesCount;
+  final String moduleType;
 
   Category({
     required this.id,
@@ -17,7 +26,13 @@ class Category {
     this.isActive = true,
     this.isFeatured = false,
     this.businessesCount = 0,
+    this.moduleType = 'directory',
   });
+
+  bool get isOrdering => moduleType == 'ordering';
+  bool get isBooking => moduleType == 'booking';
+  bool get isBoth => moduleType == 'both';
+  bool get isDirectory => moduleType == 'directory';
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
@@ -29,6 +44,7 @@ class Category {
       isActive: json['is_active'] ?? true,
       isFeatured: json['is_featured'] ?? false,
       businessesCount: json['businesses_count'] ?? 0,
+      moduleType: json['module_type'] ?? 'directory',
     );
   }
 }
@@ -61,6 +77,24 @@ class Business {
   final String? distance;
   final bool? isSaved;
 
+  // New fields
+  final bool? isBookable;
+  final int? priceRange;
+  final String? serviceType;
+  final Map<String, dynamic>? enabledModules;
+  final Map<String, dynamic>? moduleConfig;
+  final int? callCount;
+  final int? whatsappCount;
+  final int? directionsCount;
+  final int? shareCount;
+  final int? productsCount;
+  final int? bookingsCount;
+  final int? ordersCount;
+  final List<Product> topProducts;
+  final List<Service> topServices;
+  final List<Vehicle> vehicles;
+  final List<DeliveryZone> deliveryZones;
+
   Business({
     required this.id,
     required this.name,
@@ -88,6 +122,22 @@ class Business {
     this.claimStatus,
     this.distance,
     this.isSaved,
+    this.isBookable,
+    this.priceRange,
+    this.serviceType,
+    this.enabledModules,
+    this.moduleConfig,
+    this.callCount,
+    this.whatsappCount,
+    this.directionsCount,
+    this.shareCount,
+    this.productsCount,
+    this.bookingsCount,
+    this.ordersCount,
+    this.topProducts = const [],
+    this.topServices = const [],
+    this.vehicles = const [],
+    this.deliveryZones = const [],
   });
 
   factory Business.fromJson(Map<String, dynamic> json) {
@@ -99,8 +149,8 @@ class Business {
       address: json['address'],
       locality: json['locality'],
       district: json['district'],
-      lat: json['lat']?.toDouble(),
-      lng: json['lng']?.toDouble(),
+      lat: json['latitude']?.toDouble() ?? json['lat']?.toDouble(),
+      lng: json['longitude']?.toDouble() ?? json['lng']?.toDouble(),
       phone: json['phone'],
       whatsapp: json['whatsapp'],
       email: json['email'],
@@ -112,14 +162,53 @@ class Business {
       viewsCount: json['views_count'] ?? 0,
       savesCount: json['saves_count'] ?? 0,
       qualityScore: json['quality_score'] ?? 0,
-      averageRating: json['average_rating'] != null ? (json['average_rating'] is num ? (json['average_rating'] as num).toDouble() : double.tryParse(json['average_rating'].toString()) ?? 0.0) : 0.0,
-      reviewCount: json['review_count'] ?? 0,
-      category: json['category'] != null ? Category.fromJson(json['category']) : null,
+      averageRating: json['average_rating'] != null
+          ? (json['average_rating'] is num
+                ? (json['average_rating'] as num).toDouble()
+                : double.tryParse(json['average_rating'].toString()) ?? 0.0)
+          : 0.0,
+      reviewCount: json['review_count'] ?? json['reviews_count'] ?? 0,
+      category: json['category'] != null
+          ? Category.fromJson(json['category'])
+          : null,
       claimStatus: json['claim_status'],
       distance: json['distance']?.toString(),
       isSaved: json['is_saved'],
+      isBookable: json['is_bookable'],
+      priceRange: json['price_range'],
+      serviceType: json['service_type'],
+      enabledModules: json['enabled_modules'] ?? json['capabilities'],
+      moduleConfig: json['module_config'],
+      callCount: json['call_count'],
+      whatsappCount: json['whatsapp_count'],
+      directionsCount: json['directions_count'],
+      shareCount: json['share_count'],
+      productsCount: json['products_count'],
+      bookingsCount: json['bookings_count'],
+      ordersCount: json['orders_count'],
+      topProducts: json['products'] != null
+          ? (json['products'] as List).map((p) => Product.fromJson(p)).toList()
+          : [],
+      topServices: json['services'] != null
+          ? (json['services'] as List).map((s) => Service.fromJson(s)).toList()
+          : [],
+      vehicles: json['vehicles'] != null
+          ? (json['vehicles'] as List).map((v) => Vehicle.fromJson(v)).toList()
+          : [],
+      deliveryZones: json['delivery_zones'] != null
+          ? (json['delivery_zones'] as List)
+                .map((z) => DeliveryZone.fromJson(z))
+                .toList()
+          : [],
     );
   }
+
+  bool get hasCatalogModule => enabledModules?['catalog'] == true;
+  bool get hasBookingsModule => enabledModules?['bookings'] == true;
+  bool get hasOrdersModule => enabledModules?['orders'] == true;
+  bool get hasInventoryModule => enabledModules?['inventory'] == true;
+  bool get hasTransportModule => enabledModules?['transport'] == true;
+  bool get hasTurfModule => enabledModules?['turf'] == true;
 }
 
 class Product {
@@ -127,20 +216,40 @@ class Product {
   final String name;
   final String slug;
   final String? description;
+  final String? menuSection;
+  final String? foodType;
+  final int? preparationMinutes;
+  final String? availableFrom;
+  final String? availableUntil;
+  final String? soldOutUntil;
+  final bool? isOrderable;
+  final String? availabilityMessage;
   final String? image;
   final double? price;
   final String? availability;
   final Business? business;
+  final int? stock;
+  final bool? isActive;
 
   Product({
     required this.id,
     required this.name,
     required this.slug,
     this.description,
+    this.menuSection,
+    this.foodType,
+    this.preparationMinutes,
+    this.availableFrom,
+    this.availableUntil,
+    this.soldOutUntil,
+    this.isOrderable,
+    this.availabilityMessage,
     this.image,
     this.price,
     this.availability,
     this.business,
+    this.stock,
+    this.isActive,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -149,12 +258,34 @@ class Product {
       name: json['name'],
       slug: json['slug'],
       description: json['description'],
+      menuSection: json['menu_section'],
+      foodType: json['food_type'],
+      preparationMinutes: json['preparation_minutes'],
+      availableFrom: json['available_from'],
+      availableUntil: json['available_until'],
+      soldOutUntil: json['sold_out_until'],
+      isOrderable: json['is_orderable'],
+      availabilityMessage: json['availability_message'],
       image: json['image'],
       price: json['price']?.toDouble(),
       availability: json['availability'],
-      business: json['business'] != null ? Business.fromJson(json['business']) : null,
+      business: json['business'] != null
+          ? Business.fromJson(json['business'])
+          : null,
+      stock: json['stock'],
+      isActive: json['is_active'],
     );
   }
+
+  String get displayPrice =>
+      price != null ? '₹${price!.toStringAsFixed(0)}' : 'N/A';
+  String get displayAvailability =>
+      isActive == true ? 'In Stock' : 'Out of Stock';
+  bool get isInStock =>
+      isOrderable ??
+      (isActive == true &&
+          availability != 'out_of_stock' &&
+          (stock == null || stock! > 0));
 }
 
 class Review {
@@ -165,6 +296,7 @@ class Review {
   final String comment;
   final String userName;
   final String createdAt;
+  final String? ownerResponse;
 
   Review({
     required this.id,
@@ -174,6 +306,7 @@ class Review {
     this.comment = '',
     this.userName = '',
     this.createdAt = '',
+    this.ownerResponse,
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
@@ -185,7 +318,7 @@ class Review {
       comment: json['comment'] ?? '',
       userName: json['user']?['name'] ?? '',
       createdAt: json['created_at'] ?? '',
+      ownerResponse: json['owner_response'],
     );
   }
 }
-
