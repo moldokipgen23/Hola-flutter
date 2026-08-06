@@ -43,6 +43,9 @@ class BusinessService {
     bool? popular,
     String? search,
     int? cityId,
+    double? latitude,
+    double? longitude,
+    int? radius,
     int page = 1,
     int perPage = 20,
   }) async {
@@ -57,6 +60,9 @@ class BusinessService {
       if (popular != null) params['popular'] = popular ? '1' : '0';
       if (search != null) params['q'] = search;
       if (cityId != null) params['city_id'] = cityId.toString();
+      if (latitude != null) params['latitude'] = latitude.toStringAsFixed(6);
+      if (longitude != null) params['longitude'] = longitude.toStringAsFixed(6);
+      if (radius != null) params['radius'] = radius.toString();
 
       final response = await api.get('/businesses', queryParams: params);
       return _parseList(response, Business.fromJson);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../design_system/tokens/design_tokens.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
@@ -20,8 +21,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<Business> _businesses = [];
   List<CityRef> _cities = [];
   int? _selectedCityId;
+  double? _lat;
+  double? _lng;
+  bool _usingGps = false;
   List<DiscoverCategory> _rail = [];
   String _selectedCategory = 'all';
+  String _pinQuery = '';
+  List<Map<String, dynamic>> _pinResults = [];
 
   @override
   void initState() {
@@ -60,9 +66,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       if (server.isNotEmpty) {
         final rail = <DiscoverCategory>[
           const DiscoverCategory('all', 'All', '✨'),
-          ...server.map(
-            (c) => DiscoverCategory(c.slug, c.name, c.icon ?? '🏪'),
-          ),
+        ...server.map(
+          (c) => DiscoverCategory(c.slug, c.name, c.displayEmoji),
+        ),
         ];
         return rail;
       }
@@ -77,7 +83,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     });
     try {
       final list = await BusinessService.list(
-        cityId: _selectedCityId,
+        cityId: _usingGps ? null : _selectedCityId,
+        latitude: _usingGps ? _lat : null,
+        longitude: _usingGps ? _lng : null,
+        radius: _usingGps ? 30 : null,
         category: _selectedCategory == 'all' ? null : _selectedCategory,
         perPage: 20,
       );
@@ -101,8 +110,84 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     await _loadBusinesses();
   }
 
+  Future<void> _useMyLocation() async {
+    if (_usingGps && _lat != null && _lng != null) {
+      Navigator.pop(context);
+      _loadBusinesses();
+      return;
+    }
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission needed for "near me"'),
+            ),
+          );
+        }
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      setState(() {
+        _lat = position.latitude;
+        _lng = position.longitude;
+        _usingGps = true;
+        _selectedCityId = null;
+      });
+      _loadBusinesses();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not detect your location')),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectPincode(Map<String, dynamic> pin) async {
+    Navigator.pop(context);
+    final district = (pin['district']?.toString() ?? '').toLowerCase();
+    final state = (pin['state']?.toString() ?? '').toLowerCase();
+    CityRef? match;
+    for (final c in _cities) {
+      final cDistrict = (c.district ?? '').toLowerCase();
+      final cState = (c.state ?? '').toLowerCase();
+      if (cDistrict.isNotEmpty && cDistrict == district && (state.isEmpty || cState == state)) {
+        match = c;
+        break;
+      }
+    }
+    setState(() {
+      _usingGps = false;
+      _lat = null;
+      _lng = null;
+      _selectedCityId = match?.id;
+    });
+    if (match != null) {
+      _loadBusinesses();
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No city found for that pincode yet')));
+    }
+  }
+
   void _selectCity(CityRef city) {
     setState(() {
+      _usingGps = false;
+      _lat = null;
+      _lng = null;
       _selectedCityId = city.id;
       if (_selectedCityId == 0) _selectedCityId = null;
     });
@@ -129,7 +214,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return 'Good Evening';
   }
 
-  String get _cityName => _selectedCity?.name ?? 'Lamka';
+  String get _cityName => _usingGps ? 'Near me' : (_selectedCity?.name ?? 'Lamka');
 
   @override
   Widget build(BuildContext context) {
@@ -991,66 +1076,215 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  Future<void> _searchPincode(String q, StateSetter setSheetState) async {
+    if (q.trim().length < 3) {
+      setSheetState(() {
+        _pinQuery = q;
+        _pinResults = [];
+      });
+      return;
+    }
+    try {
+      final res = await api.get('/pincodes/search', queryParams: {'q': q.trim()});
+      final data = res['data'];
+      setSheetState(() {
+        _pinQuery = q;
+        _pinResults = data is List
+            ? data
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+            : [];
+      });
+    } catch (_) {
+      setSheetState(() {
+        _pinQuery = q;
+        _pinResults = [];
+      });
+    }
+  }
+
   void _openCityPicker() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 42,
-              height: 5,
-              decoration: BoxDecoration(
-                color: AppColors.line,
-                borderRadius: BorderRadius.circular(999),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Choose your city',
-                        style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Choose your city',
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'See businesses near you',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.muted,
+                        SizedBox(height: 2),
+                        Text(
+                          'See businesses near you',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.muted,
+                          ),
                         ),
+                      ],
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F4F7),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: const Icon(Icons.close, size: 20),
                       ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F4F7),
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: const Icon(Icons.close, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              // Use my current location
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 10),
+                child: GestureDetector(
+                  onTap: _useMyLocation,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F3FA),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE3E6F1)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.my_location,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Use my current location',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+              // Pincode search
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+                child: TextField(
+                  onChanged: (q) => _searchPincode(q, setSheetState),
+                  decoration: InputDecoration(
+                    hintText: 'Search by pincode (e.g. 795128)',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[400],
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 18,
+                      color: Colors.grey,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF7F8FC),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              if (_pinResults.isNotEmpty)
+                ..._pinResults.map(
+                  (pin) => GestureDetector(
+                    onTap: () => _selectPincode(pin),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F8FC),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${pin['pincode']} · ${pin['locality']}',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              '${pin['district']}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (_pinQuery.isNotEmpty && _pinResults.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(18, 4, 18, 8),
+                  child: Text(
+                    'No pincode found',
+                    style: TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
+                ),
+              // City list header
+              const Padding(
+                padding: EdgeInsets.fromLTRB(18, 8, 18, 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'OR CHOOSE A CITY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.05,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ),
             if (_cities.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(24),
@@ -1060,61 +1294,68 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               )
             else
-              ..._cities.map(
-                (city) => GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    _selectCity(city);
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.line),
-                      borderRadius: BorderRadius.circular(16),
-                      color: _selectedCityId == city.id
-                          ? const Color(0xFFF2f3fa)
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: _cities.map(
+                    (city) => GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _selectCity(city);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.line),
+                          borderRadius: BorderRadius.circular(16),
+                          color: _selectedCityId == city.id
+                              ? const Color(0xFFF2f3fa)
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              city.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  city.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (city.state != null)
+                                  Text(
+                                    city.state!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                              ],
                             ),
-                            if (city.state != null)
-                              Text(
-                                city.state!,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
+                            if (_selectedCityId == city.id)
+                              const Text(
+                                '✓',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  color: AppColors.primary,
                                 ),
                               ),
                           ],
                         ),
-                        if (_selectedCityId == city.id)
-                          const Text(
-                            '✓',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ).toList(),
                 ),
               ),
-            const SizedBox(height: 10),
-          ],
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );

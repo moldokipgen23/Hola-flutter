@@ -17,6 +17,59 @@ class Category {
   final int businessesCount;
   final String moduleType;
 
+  static const _emojiMap = <String, String>{
+    'food-restaurants': '🍽️',
+    'food': '🍽️',
+    'restaurant': '🍽️',
+    'cafe': '☕',
+    'bakery': '🧁',
+    'hotels-lodges': '🏨',
+    'hotel': '🏨',
+    'stay': '🏨',
+    'healthcare': '🏥',
+    'health': '🏥',
+    'clinic': '🏥',
+    'pharmacy': '💊',
+    'beauty-wellness': '💇',
+    'beauty': '💇',
+    'salon': '💇',
+    'education': '📚',
+    'learning': '📚',
+    'school': '📚',
+    'sports-fitness': '⚽',
+    'turf': '⚽',
+    'gym': '💪',
+    'sports': '⚽',
+    'shopping-retail': '🛍️',
+    'shopping': '🛍️',
+    'retail': '🛍️',
+    'grocery': '🛒',
+    'professional-services': '💼',
+    'services': '💼',
+    'automobiles': '🚗',
+    'automotive': '🚗',
+    'transport': '🚗',
+    'establishment': '🏪',
+    'general': '🏪',
+    'other': '🏪',
+  };
+
+  String get displayEmoji {
+    final iconVal = icon;
+    if (iconVal != null && iconVal.isNotEmpty) {
+      final slugEmoji = _emojiMap[slug.toLowerCase()];
+      if (slugEmoji != null) return slugEmoji;
+      final nameEmoji = _emojiMap[name.toLowerCase()];
+      if (nameEmoji != null) return nameEmoji;
+      if (iconVal.runes.any((r) => r > 0x2700)) return iconVal;
+    }
+    final slugFallback = _emojiMap[slug.toLowerCase()];
+    if (slugFallback != null) return slugFallback;
+    final nameFallback = _emojiMap[name.toLowerCase()];
+    if (nameFallback != null) return nameFallback;
+    return '🏪';
+  }
+
   Category({
     required this.id,
     required this.name,
@@ -55,12 +108,14 @@ class CityRef {
   final String name;
   final String? slug;
   final String? state;
+  final String? district;
 
   const CityRef({
     required this.id,
     required this.name,
     this.slug,
     this.state,
+    this.district,
   });
 
   factory CityRef.fromJson(Map<String, dynamic> json) => CityRef(
@@ -68,6 +123,7 @@ class CityRef {
     name: json['name']?.toString() ?? 'Unknown',
     slug: json['slug']?.toString(),
     state: json['state']?.toString(),
+    district: json['district']?.toString(),
   );
 
   String get displayName =>
@@ -234,7 +290,16 @@ class Business {
       email: json['email'],
       website: json['website'],
       photos: (json['photos'] as List?)
-              ?.whereType<String>()
+              ?.map((e) {
+                if (e is String) return e;
+                if (e is Map<String, dynamic>) {
+                  return e['url']?.toString() ??
+                      e['path']?.toString() ??
+                      e['photo_url']?.toString() ??
+                      '';
+                }
+                return '';
+              })
               .where((e) => e.isNotEmpty)
               .toList() ??
           const [],

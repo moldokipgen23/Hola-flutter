@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../design_system/tokens/design_tokens.dart';
 
 class SplashScreen extends StatefulWidget {
   final Widget nextScreen;
@@ -17,7 +16,6 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
   Timer? _navigationTimer;
   Timer? _safetyTimer;
   bool _navigated = false;
@@ -31,19 +29,10 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
     );
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.45, 1.0, curve: Curves.easeOut),
-      ),
     );
     _controller.forward();
 
@@ -66,130 +55,36 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final logoSize = size.width * 0.42;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0C112F),
-      body: DecoratedBox(
+      body: Container(
         decoration: const BoxDecoration(
+          // Matches the logo's background gradient so the logo blends seamlessly.
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0C112F), Color(0xFF111345), Color(0xFF1B205A)],
+            colors: [
+              Color(0xFFE513BC),
+              Color(0xFF6A0893),
+              Color(0xFF160968),
+            ],
           ),
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -90,
-              top: -90,
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.gold.withValues(alpha: 0.12),
-                ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Image.asset(
+                'assets/branding/eiho_logo.png',
+                width: logoSize,
+                height: logoSize,
+                fit: BoxFit.contain,
               ),
             ),
-            Positioned(
-              left: -70,
-              bottom: -80,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.gold.withValues(alpha: 0.07),
-                ),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Container(
-                        width: 116,
-                        height: 116,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [AppColors.gold, Color(0xFFB9822D)],
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.gold.withValues(alpha: 0.45),
-                              blurRadius: 32,
-                              offset: const Offset(0, 14),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'E',
-                            style: TextStyle(
-                              fontSize: 56,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF1A1421),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-                  SlideTransition(
-                    position: _slideAnimation,
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Eiho One',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Discover. Book. Enjoy your city.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.75),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 48,
-              child: Center(
-                child: Text(
-                  'Lamka · Guwahati · Imphal · Aizawl',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: Colors.white.withValues(alpha: 0.45),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -678,30 +678,27 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
       ),
       child: Row(
         children: [
-          if (business!.phone != null)
-            _buildActionTile(
-              Icons.call_rounded,
-              'Call',
-              AppColors.success,
-              _call,
-            ),
-          if (business!.phone != null) const SizedBox(width: 10),
-          if (business!.whatsapp != null)
-            _buildActionTile(
-              Icons.chat_rounded,
-              'WhatsApp',
-              const Color(0xFF25D366),
-              _whatsapp,
-            ),
-          if (business!.whatsapp != null) const SizedBox(width: 10),
-          if (business!.lat != null)
-            _buildActionTile(
-              Icons.directions_outlined,
-              'Directions',
-              AppColors.primary,
-              _directions,
-            ),
-          if (business!.lat != null) const SizedBox(width: 10),
+          _buildActionTile(
+            Icons.call_rounded,
+            'Call',
+            business!.phone != null ? AppColors.success : Colors.grey[300]!,
+            business!.phone != null ? _call : null,
+          ),
+          const SizedBox(width: 10),
+          _buildActionTile(
+            Icons.chat_rounded,
+            'WhatsApp',
+            business!.whatsapp != null ? const Color(0xFF25D366) : Colors.grey[300]!,
+            business!.whatsapp != null ? _whatsapp : null,
+          ),
+          const SizedBox(width: 10),
+          _buildActionTile(
+            Icons.directions_outlined,
+            'Directions',
+            business!.lat != null ? AppColors.primary : Colors.grey[300]!,
+            business!.lat != null ? _directions : null,
+          ),
+          const SizedBox(width: 10),
           _buildActionTile(
             Icons.share_outlined,
             'Share',
@@ -713,7 +710,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
     );
   }
 
-  Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback? onTap) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -882,6 +879,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
             _buildSection('Working Hours', isDark, [
               ...business!.workingHours!.entries.map((e) {
                 final isToday = DateTime.now().weekday == _dayToInt(e.key);
+                final hoursText = _formatHoursValue(e.value);
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Row(
@@ -901,7 +899,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
                         ),
                       ),
                       Text(
-                        e.value.toString(),
+                        hoursText,
                         style: AppTypography.bodyMedium.copyWith(
                           color: isToday
                               ? AppColors.primary
@@ -1389,6 +1387,21 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
         ),
       ),
     );
+  }
+
+  String _formatHoursValue(dynamic value) {
+    if (value == null) return 'Closed';
+    if (value is String) return value.isEmpty ? 'Closed' : value;
+    if (value is Map) {
+      final open = value['open']?.toString() ?? value['from']?.toString();
+      final close = value['close']?.toString() ?? value['to']?.toString();
+      if (open == null && close == null) return 'Closed';
+      if (open == null) return 'Until $close';
+      if (close == null) return 'From $open';
+      return '$open – $close';
+    }
+    if (value is List && value.isEmpty) return 'Closed';
+    return value.toString();
   }
 
   int _dayToInt(String day) {
