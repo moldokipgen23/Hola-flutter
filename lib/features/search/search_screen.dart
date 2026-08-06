@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
+import '../../services/business_service.dart';
 import '../../theme.dart';
 import '../../widgets/safe_image.dart';
 import '../../widgets/category_icons.dart';
@@ -58,6 +59,36 @@ class _SearchScreenState extends State<SearchScreen> {
   bool loading = false;
   bool searched = false;
   String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefault();
+  }
+
+  /// Show nearby businesses by default (prototype "Nearby" behavior) so the
+  /// tab isn't an empty search box.
+  Future<void> _loadDefault() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final list = await BusinessService.list(perPage: 15);
+      if (!mounted) return;
+      setState(() {
+        results = list;
+        searched = true;
+        loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        error = 'Could not load businesses';
+      });
+    }
+  }
 
   void _search(String query) async {
     if (query.trim().length < 2) return;

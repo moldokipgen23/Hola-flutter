@@ -5,7 +5,6 @@ import '../../design_system/tokens/design_tokens.dart';
 import '../../design_system/components/buttons.dart';
 import '../../design_system/components/cards.dart';
 import '../../design_system/components/animations.dart';
-import '../../features/home/home_screen.dart';
 
 class TurfBookingConfirmationScreen extends StatelessWidget {
   final Map<String, dynamic> bookingData;
@@ -274,10 +273,7 @@ class TurfBookingConfirmationScreen extends StatelessWidget {
         AppButton(
           label: 'Back to Home',
           onPressed: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-              (route) => false,
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           },
           isFullWidth: true,
         ),

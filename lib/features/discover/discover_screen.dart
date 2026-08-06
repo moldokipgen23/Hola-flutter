@@ -329,7 +329,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, '/notifications'),
           child: Stack(
             children: [
               Container(
@@ -520,7 +520,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 const SizedBox(height: 14),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => _openExplore(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 13,

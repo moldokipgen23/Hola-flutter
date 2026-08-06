@@ -7,6 +7,7 @@ import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'features/discover/discover_screen.dart';
+import 'features/explore/explore_screen.dart';
 import 'features/search/search_screen.dart';
 import 'features/shared/profile_screen.dart';
 import 'features/shared/business_detail_screen.dart';
@@ -741,29 +742,29 @@ class _MainScreenState extends State<MainScreen> {
       items.add({
         'emoji': '✂️',
         'label': 'Salon',
-        'route': '/appointment/services',
+        'category': 'salons',
       });
     }
     if (config.experience('stay')) {
       items.add({
         'emoji': '🏨',
         'label': 'Hotel',
-        'route': '/stay/search',
+        'category': 'hotels-lodges',
       });
     }
     if (config.world('book')) {
       items.add({
         'emoji': '⚽',
         'label': 'Turf',
-        'route': '/turf/discover',
+        'category': 'football-turf',
       });
     }
 
     if (items.isEmpty) {
       items.addAll([
-        {'emoji': '✂️', 'label': 'Salon', 'route': '/appointment/services'},
-        {'emoji': '🏨', 'label': 'Hotel', 'route': '/stay/search'},
-        {'emoji': '⚽', 'label': 'Turf', 'route': '/turf/discover'},
+        {'emoji': '✂️', 'label': 'Salon', 'category': 'salons'},
+        {'emoji': '🏨', 'label': 'Hotel', 'category': 'hotels-lodges'},
+        {'emoji': '⚽', 'label': 'Turf', 'category': 'football-turf'},
       ]);
     }
 
@@ -802,7 +803,7 @@ class _MainScreenState extends State<MainScreen> {
                     context,
                     item['emoji'] as String,
                     item['label'] as String,
-                    item['route'] as String,
+                    item['category'] as String,
                   )),
               const SizedBox(height: 8),
             ],
@@ -812,11 +813,21 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildQuickBookItem(BuildContext context, String emoji, String label, String route) {
+  Widget _buildQuickBookItem(
+    BuildContext context,
+    String emoji,
+    String label,
+    String category,
+  ) {
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        Navigator.pushNamed(context, route);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ExploreScreen(initialCategory: category),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),

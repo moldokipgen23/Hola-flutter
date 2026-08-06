@@ -141,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         GestureDetector(
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, '/settings'),
           child: Container(
             width: 42,
             height: 42,
