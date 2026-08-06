@@ -3,10 +3,18 @@ import '../../design_system/tokens/design_tokens.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import '../../services/business_service.dart';
+import '../../services/category_service.dart';
 import '../../services/city_service.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  final String? initialCategory;
+  final int? initialCityId;
+
+  const ExploreScreen({
+    super.key,
+    this.initialCategory,
+    this.initialCityId,
+  });
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -18,10 +26,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   List<Business> _businesses = [];
   List<CityRef> _cities = [];
   int? _selectedCityId;
-  String _selectedChip = 'All';
+  String _selectedChip = 'all';
   final TextEditingController _searchController = TextEditingController();
-
-  final List<String> _chips = ['All', 'Sports', 'Stay', 'Beauty', 'Dining'];
+  List<DiscoverCategory> _categories = [];
 
   @override
   void initState() {
@@ -35,9 +42,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _error = null;
     });
     try {
+      _categories = await _loadCategories();
       _cities = await CityService.getCities();
       if (_cities.isNotEmpty) {
-        _selectedCityId = _cities.first.id;
+        _selectedCityId = widget.initialCityId ?? _cities.first.id;
+      }
+      if (widget.initialCategory != null) {
+        _selectedChip = widget.initialCategory!;
       }
       await _loadBusinesses();
     } catch (_) {
@@ -50,6 +61,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  Future<List<DiscoverCategory>> _loadCategories() async {
+    try {
+      final server = await CategoryService.getCategories();
+      if (server.isNotEmpty) {
+        return <DiscoverCategory>[
+          const DiscoverCategory('all', 'All', '✨'),
+          ...server.map((c) => DiscoverCategory(c.slug, c.name, c.icon ?? '🏪')),
+        ];
+      }
+    } catch (_) {}
+    return kDiscoverCategories;
+  }
+
   Future<void> _loadBusinesses() async {
     setState(() {
       _isLoading = true;
@@ -58,8 +82,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     try {
       final list = await BusinessService.list(
         cityId: _selectedCityId,
-        category: _selectedChip == 'All' ? null : _selectedChip.toLowerCase(),
-        perPage: 20,
+        category: _selectedChip == 'all' ? null : _selectedChip,
+        perPage: 30,
       );
       if (mounted) {
         setState(() {
@@ -197,14 +221,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-        itemCount: _chips.length,
+        itemCount: _categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 9),
         itemBuilder: (context, i) {
-          final chip = _chips[i];
-          final active = chip == _selectedChip;
+          final cat = _categories[i];
+          final active = cat.slug == _selectedChip;
           return GestureDetector(
             onTap: () {
-              setState(() => _selectedChip = chip);
+              setState(() => _selectedChip = cat.slug);
               _loadBusinesses();
             },
             child: Container(
@@ -217,7 +241,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
               child: Text(
-                chip,
+                cat.label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,

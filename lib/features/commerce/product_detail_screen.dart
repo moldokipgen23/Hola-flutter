@@ -72,7 +72,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final isDark = theme.colorScheme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.product.name)),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          widget.product.name,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        centerTitle: false,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: AppColors.navy),
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,14 +99,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SlideInWidget(
-                    delay: const Duration(milliseconds: 100),
-                    child: _buildStockStatus(theme),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  SlideInWidget(
-                    delay: const Duration(milliseconds: 150),
-                    child: _buildProductInfo(theme),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SlideInWidget(
+                          delay: const Duration(milliseconds: 100),
+                          child: _buildStockStatus(theme),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        SlideInWidget(
+                          delay: const Duration(milliseconds: 150),
+                          child: _buildProductInfo(theme),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   SlideInWidget(
