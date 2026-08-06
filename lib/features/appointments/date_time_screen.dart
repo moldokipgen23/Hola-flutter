@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../design_system/tokens/design_tokens.dart';
-import '../../design_system/components/buttons.dart';
-import '../../design_system/components/cards.dart';
-import '../../design_system/components/animations.dart';
-import '../../design_system/components/skeletons.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import 'booking_summary_screen.dart';
@@ -37,12 +33,25 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   bool _loadingSlots = false;
   Set<String> _availableDates = {};
   String? _slotsError;
+  String? _selectedServiceId;
 
   @override
   void initState() {
     super.initState();
+    _selectedServiceId = widget.serviceId;
     _loadAvailability();
     _loadTimeSlots();
+  }
+
+  Service? get _selectedService {
+    if (_selectedServiceId == null) return null;
+    try {
+      return widget.services.firstWhere(
+        (s) => s.id.toString() == _selectedServiceId,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _loadAvailability() async {
@@ -50,7 +59,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
       final params = <String, String>{
         'business_id': widget.businessId.toString(),
       };
-      if (widget.serviceId != null) params['service_id'] = widget.serviceId!;
+      if (_selectedServiceId != null) params['service_id'] = _selectedServiceId!;
       if (widget.staffId != null) params['staff_id'] = widget.staffId!;
 
       final res = await api.get(
@@ -58,21 +67,15 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         queryParams: params,
       );
 
-      if (!mounted) return;
-
-      final dates = <String>{};
-      final availableDates = res['available_dates'] as List?;
-      if (availableDates != null) {
-        for (final d in availableDates) {
-          dates.add(d.toString());
-        }
+      if (mounted) {
+        setState(() {
+          _availableDates = Set<String>.from(
+            (res['available_dates'] as List? ?? []).map((d) => d.toString()),
+          );
+        });
       }
-
-      setState(() {
-        _availableDates = dates;
-      });
     } catch (_) {
-      // Silently handle errors - availability will default to showing all dates
+      // Silently handle — show all dates as fallback
     }
   }
 
@@ -83,9 +86,10 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     });
 
     try {
-      final dateStr = _selectedDate.toIso8601String().split('T')[0];
-      final params = <String, String>{'date': dateStr};
-      if (widget.serviceId != null) params['service_id'] = widget.serviceId!;
+      final params = <String, String>{
+        'date': '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
+      };
+      if (_selectedServiceId != null) params['service_id'] = _selectedServiceId!;
       if (widget.staffId != null) params['staff_id'] = widget.staffId!;
 
       final res = await api.get(
@@ -93,47 +97,27 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         queryParams: params,
       );
 
-      if (!mounted) return;
-
-      final slots =
-          (res['slots'] as List?)
-              ?.map((s) => Map<String, dynamic>.from(s))
-              .toList() ??
-          [];
-
-      setState(() {
-        _timeSlots = slots;
-        _loadingSlots = false;
-        _selectedTime = null;
-      });
+      if (mounted) {
+        setState(() {
+          _timeSlots = List<Map<String, dynamic>>.from(res['slots'] ?? []);
+          _selectedTime = null;
+          _loadingSlots = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _slotsError = e.toString().replaceFirst('Exception: ', '');
+          _slotsError = e.toString();
           _loadingSlots = false;
         });
       }
     }
   }
 
-  Service? get _selectedService {
-    if (widget.serviceId == null) return null;
-    try {
-      return widget.services.firstWhere(
-        (s) => s.id.toString() == widget.serviceId,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
+  bool get _canProceed => _selectedTime != null;
 
   void _proceedToSummary() {
-    if (_selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a time slot')),
-      );
-      return;
-    }
+    if (!_canProceed || _selectedTime == null) return;
 
     Navigator.push(
       context,
@@ -151,356 +135,461 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     );
   }
 
-  bool _isDateAvailable(DateTime date) {
-    final dateStr = date.toIso8601String().split('T')[0];
-    if (_availableDates.isEmpty) return true;
-    return _availableDates.contains(dateStr);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Select Date & Time',
-          style: AppTypography.titleMedium.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+        title: const Text(
+          'Book appointment',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
         ),
-      ),
-      body: ListView(
-        padding: AppSpacing.screenPadding,
-        children: [
-          if (_selectedService != null) ...[
-            _buildServiceInfo(isDark),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-          if (widget.staffName != null) ...[
-            _buildStaffInfo(isDark),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-          _buildSectionTitle(
-            isDark,
-            'Select Date',
-            Icons.calendar_today_rounded,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildCalendar(isDark),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSectionTitle(
-            isDark,
-            'Available Times',
-            Icons.access_time_rounded,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildTimeSlots(isDark),
-          const SizedBox(height: AppSpacing.lg),
-          AppButton(
-            label: 'Continue',
-            trailingIcon: Icons.arrow_forward_rounded,
-            onPressed: _selectedTime != null ? _proceedToSummary : null,
-            isFullWidth: true,
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceInfo(bool isDark) {
-    final service = _selectedService!;
-    return AppCard(
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.experienceAppointment.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(
-              Icons.medical_services_outlined,
-              color: AppColors.experienceAppointment,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(40),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+            child: Row(
               children: [
-                Text(
-                  service.name,
-                  style: AppTypography.titleSmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  '${service.duration} min · ₹${service.price.toStringAsFixed(0)}',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.textSecondary,
-                  ),
-                ),
+                _buildStepIndicator(1, 'Date & Time', true),
+                Expanded(child: Container(height: 2, color: AppColors.line)),
+                _buildStepIndicator(2, 'Review', false),
               ],
             ),
           ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildStaffInfo(bool isDark) {
-    return AppCard(
-      child: Row(
+      body: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.experienceAppointment.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(
-              Icons.person_outline_rounded,
-              color: AppColors.experienceAppointment,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Text(
-            widget.staffName!,
-            style: AppTypography.titleSmall.copyWith(
-              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 100),
+              children: [
+                if (widget.services.length > 1) ...[
+                  _buildServiceChips(),
+                  const SizedBox(height: 16),
+                ],
+                _buildCalendarSection(),
+                const SizedBox(height: 16),
+                _buildTimeSlotsSection(),
+              ],
             ),
           ),
+          _buildBottomBar(),
         ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(bool isDark, String title, IconData icon) {
+  Widget _buildStepIndicator(int step, String label, bool isActive) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : AppColors.line,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              '$step',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: isActive ? Colors.white : AppColors.muted,
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: AppSpacing.xs),
+        const SizedBox(width: 6),
         Text(
-          title,
-          style: AppTypography.titleSmall.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isActive ? AppColors.primary : AppColors.muted,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCalendar(bool isDark) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: CalendarDatePicker(
-        initialDate: _selectedDate,
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 60)),
-        onDateChanged: (date) {
-          setState(() => _selectedDate = date);
-          _loadTimeSlots();
-        },
-        selectableDayPredicate: (date) {
-          return _isDateAvailable(date);
-        },
+  Widget _buildServiceChips() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'SERVICE',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppColors.muted,
+            letterSpacing: 0.05,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: widget.services.map((service) {
+            final isSelected = _selectedServiceId == service.id.toString();
+            return GestureDetector(
+              onTap: () {
+                setState(() => _selectedServiceId = service.id.toString());
+                _loadAvailability();
+                _loadTimeSlots();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : AppColors.line,
+                  ),
+                ),
+                child: Text(
+                  service.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarSection() {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(_selectedDate.year, _selectedDate.month + 1, 0).day;
+    final firstDayOfWeek = DateTime(_selectedDate.year, _selectedDate.month, 1).weekday % 7;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${_monthName(_selectedDate.month)} ${_selectedDate.year}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedDate = DateTime(
+                          _selectedDate.year,
+                          _selectedDate.month - 1,
+                        );
+                      });
+                      _loadTimeSlots();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.chevron_left, size: 18, color: AppColors.muted),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedDate = DateTime(
+                          _selectedDate.year,
+                          _selectedDate.month + 1,
+                        );
+                      });
+                      _loadTimeSlots();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.chevron_right, size: 18, color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    d,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              childAspectRatio: 1,
+            ),
+            itemCount: firstDayOfWeek + daysInMonth,
+            itemBuilder: (context, index) {
+              if (index < firstDayOfWeek) return const SizedBox();
+              final day = index - firstDayOfWeek + 1;
+              final date = DateTime(_selectedDate.year, _selectedDate.month, day);
+              final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+              final isSelected = date.year == _selectedDate.year &&
+                  date.month == _selectedDate.month &&
+                  date.day == _selectedDate.day;
+              final isPast = date.isBefore(DateTime(now.year, now.month, now.day));
+              final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              final isAvailable = _availableDates.isEmpty || _availableDates.contains(dateStr);
+
+              return GestureDetector(
+                onTap: isPast || !isAvailable
+                    ? null
+                    : () {
+                        setState(() => _selectedDate = date);
+                        _loadTimeSlots();
+                      },
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary
+                        : isToday
+                            ? AppColors.gold.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isToday || isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isPast || !isAvailable
+                            ? Colors.grey[300]
+                            : isSelected
+                                ? Colors.white
+                                : isToday
+                                    ? AppColors.gold
+                                    : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTimeSlots(bool isDark) {
-    if (_loadingSlots) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: SlotSkeleton(),
-      );
-    }
-
-    if (_slotsError != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 36,
-                color: AppColors.error,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Could not load time slots',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextPrimary
-                      : AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _slotsError!,
-                style: AppTypography.bodySmall.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextTertiary
-                      : AppColors.textTertiary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+  Widget _buildTimeSlotsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-        ),
-      );
-    }
-
-    if (_timeSlots.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 32),
-          child: Column(
-            children: [
-              Icon(
-                Icons.event_busy_rounded,
-                size: 40,
-                color: isDark
-                    ? AppColors.darkTextTertiary
-                    : AppColors.textTertiary,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'No available times for this date',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Try selecting a different date',
-                style: AppTypography.bodySmall.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextTertiary
-                      : AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: _timeSlots.map((slot) {
-        final time = slot['start_time']?.toString() ?? '';
-        final available = slot['available'] ?? slot['is_available'] ?? true;
-        final selected = _selectedTime == time;
-        final displayTime = _formatTime(time);
-
-        return ScaleInWidget(
-          key: ValueKey('slot_$time'),
-          beginScale: selected ? 0.9 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: GestureDetector(
-            onTap: available
-                ? () => setState(() => _selectedTime = time)
-                : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: (MediaQuery.of(context).size.width - 56) / 3,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              decoration: BoxDecoration(
-                color: !available
-                    ? (isDark
-                          ? AppColors.darkSurfaceVariant.withValues(alpha: 0.5)
-                          : AppColors.surfaceVariant.withValues(alpha: 0.5))
-                    : selected
-                    ? AppColors.experienceAppointment
-                    : (isDark ? AppColors.darkSurface : AppColors.surface),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(
-                  color: selected
-                      ? AppColors.experienceAppointment
-                      : available
-                      ? (isDark ? AppColors.darkOutline : AppColors.outline)
-                      : (isDark
-                            ? AppColors.darkOutline.withValues(alpha: 0.3)
-                            : AppColors.outline.withValues(alpha: 0.3)),
-                  width: selected ? 2 : 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    displayTime,
-                    style: AppTypography.titleSmall.copyWith(
-                      color: !available
-                          ? (isDark
-                                ? AppColors.darkTextTertiary
-                                : AppColors.textTertiary)
-                          : selected
-                          ? Colors.white
-                          : (isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.textPrimary),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (!available)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        'Unavailable',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: isDark
-                              ? AppColors.darkTextTertiary
-                              : AppColors.textTertiary,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AVAILABLE TIMES',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+              letterSpacing: 0.05,
             ),
           ),
-        );
-      }).toList(),
+          const SizedBox(height: 12),
+          if (_loadingSlots)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+              ),
+            )
+          else if (_slotsError != null)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'Failed to load slots',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ),
+            )
+          else if (_timeSlots.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'No slots available for this date',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _timeSlots.map((slot) {
+                final time = slot['start_time']?.toString() ?? '';
+                final available = slot['available'] == true || slot['is_available'] == true;
+                final isSelected = _selectedTime == time;
+                final displayTime = _formatTime(time);
+
+                return GestureDetector(
+                  onTap: available
+                      ? () => setState(() => _selectedTime = time)
+                      : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary
+                          : available
+                              ? Colors.white
+                              : AppColors.soft,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : available
+                                ? AppColors.line
+                                : AppColors.line.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Text(
+                      displayTime,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected
+                            ? Colors.white
+                            : available
+                                ? AppColors.textPrimary
+                                : Colors.grey[400],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: GestureDetector(
+          onTap: _canProceed ? _proceedToSummary : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: _canProceed ? AppColors.gold : AppColors.line,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: Text(
+                'Continue to review',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: _canProceed ? const Color(0xFF1a1421) : AppColors.muted,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return months[month];
+  }
+
   String _formatTime(String time24) {
-    final parts = time24.split(':');
-    if (parts.length < 2) return time24;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
-    final period = h < 12 ? 'AM' : 'PM';
-    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    final mStr = m > 0 ? ':${m.toString().padLeft(2, '0')}' : '';
-    return '$h12$mStr $period';
+    try {
+      final parts = time24.split(':');
+      final hour = int.parse(parts[0]);
+      final min = parts[1];
+      if (hour == 0) return '12:$min AM';
+      if (hour < 12) return '$hour:$min AM';
+      if (hour == 12) return '12:$min PM';
+      return '${hour - 12}:$min PM';
+    } catch (_) {
+      return time24;
+    }
   }
 }

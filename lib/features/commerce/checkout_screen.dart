@@ -111,7 +111,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         data['pincode'] = _pincodeController.text.trim();
       }
 
-      final response = await api.post('/orders', body: data);
+      final response = await api.post(
+        '/businesses/${widget.business.slug}/orders',
+        body: data,
+      );
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(

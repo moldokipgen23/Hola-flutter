@@ -6,9 +6,8 @@ import 'theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'features/shop/shop_screen.dart';
-import 'features/book/book_screen.dart';
 import 'features/discover/discover_screen.dart';
+import 'features/search/search_screen.dart';
 import 'features/shared/profile_screen.dart';
 import 'features/shared/business_detail_screen.dart';
 import 'features/shared/feature_unavailable_screen.dart';
@@ -51,6 +50,7 @@ import 'features/transport/goods_transport_screen.dart';
 import 'features/shared/saved_screen.dart';
 import 'features/activity/my_orders_screen.dart';
 import 'features/activity/my_bookings_screen.dart';
+import 'features/booking/booking_lookup_screen.dart';
 import 'features/activity/my_trips_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/auth/auth_screen.dart';
@@ -60,6 +60,7 @@ import 'models/models.dart';
 import 'services/notification_service.dart';
 import 'services/launch_control_service.dart';
 import 'models/launch_config.dart';
+import 'design_system/tokens/design_tokens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -454,6 +455,8 @@ class _EihoOneAppState extends State<EihoOneApp> with WidgetsBindingObserver {
             return MaterialPageRoute(builder: (_) => const MyOrdersScreen());
           case '/my-bookings':
             return MaterialPageRoute(builder: (_) => const MyBookingsScreen());
+          case '/booking-lookup':
+            return MaterialPageRoute(builder: (_) => const BookingLookupScreen());
           case '/my-trips':
             return MaterialPageRoute(builder: (_) => const MyTripsScreen());
 
@@ -608,10 +611,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  void _switchTab(int index) {
-    setState(() => _currentIndex = index);
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -623,63 +622,47 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildWithConfig(LaunchConfig config) {
-    final tabs = <_LaunchTab>[
-      if (config.world('shop'))
-        _LaunchTab(
-          'Shopping',
-          Icons.shopping_cart_outlined,
-          Icons.shopping_cart,
-          ShopScreen(onTabChange: _switchTab, launchConfig: config),
-        ),
-      if (config.world('book'))
-        _LaunchTab(
-          'Booking',
-          Icons.calendar_today_outlined,
-          Icons.calendar_today,
-          BookScreen(launchConfig: config),
-        ),
-      if (config.world('discover'))
-        const _LaunchTab(
-          'Directory',
-          Icons.explore_outlined,
-          Icons.explore,
-          DiscoverScreen(),
-        ),
-      _LaunchTab(
-        'Account',
-        Icons.person_outline,
-        Icons.person,
-        ProfileScreen(
-          onThemeChanged: widget.onThemeChanged,
-          themeMode: widget.themeMode,
-        ),
+    final screens = <Widget>[
+      const DiscoverScreen(),
+      const SearchScreen(),
+      const SizedBox.shrink(),
+      const SavedScreen(),
+      ProfileScreen(
+        onThemeChanged: widget.onThemeChanged,
+        themeMode: widget.themeMode,
       ),
     ];
-    if (_currentIndex >= tabs.length) _currentIndex = 0;
 
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: tabs.map((tab) => tab.screen).toList(),
+        children: screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE7EAF0))),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      extendBody: true,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.primaryDark,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF111345).withValues(alpha: 0.3),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
             child: Row(
-              children: tabs.asMap().entries.map((entry) {
-                final tab = entry.value;
-                return _buildNavItem(
-                  entry.key,
-                  tab.outlineIcon,
-                  tab.filledIcon,
-                  tab.label,
-                );
-              }).toList(),
+              children: [
+                _buildPillItem(0, Icons.explore_outlined, Icons.explore, 'Discover'),
+                _buildPillItem(1, Icons.search_outlined, Icons.search, 'Nearby'),
+                _buildCenterFAB(config),
+                _buildPillItem(3, Icons.bookmark_border, Icons.bookmark, 'Saved'),
+                _buildPillItem(4, Icons.person_outline, Icons.person, 'You'),
+              ],
             ),
           ),
         ),
@@ -687,37 +670,33 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(
-    int index,
-    IconData outlineIcon,
-    IconData filledIcon,
-    String label,
-  ) {
+  Widget _buildPillItem(int index, IconData outlineIcon, IconData filledIcon, String label) {
     final isActive = _currentIndex == index;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _currentIndex = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFF0F1FF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: 60,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 isActive ? filledIcon : outlineIcon,
-                size: 22,
-                color: isActive ? AppTheme.primary : const Color(0xFF667085),
+                size: 20,
+                color: isActive
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.5),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.w800,
-                  color: isActive ? AppTheme.primary : const Color(0xFF667085),
+                  color: isActive
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -726,13 +705,148 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-}
 
-class _LaunchTab {
-  final String label;
-  final IconData outlineIcon;
-  final IconData filledIcon;
-  final Widget screen;
+  Widget _buildCenterFAB(LaunchConfig config) {
+    return GestureDetector(
+      onTap: () => _showQuickBookSheet(context, config),
+      child: Container(
+        width: 50,
+        height: 50,
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: AppColors.gold,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.gold.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Color(0xFF1a1421),
+          size: 26,
+          weight: 900,
+        ),
+      ),
+    );
+  }
 
-  const _LaunchTab(this.label, this.outlineIcon, this.filledIcon, this.screen);
+  void _showQuickBookSheet(BuildContext context, LaunchConfig config) {
+    final items = <Map<String, dynamic>>[];
+
+    if (config.experience('appointment')) {
+      items.add({
+        'emoji': '✂️',
+        'label': 'Salon',
+        'route': '/appointment/services',
+      });
+    }
+    if (config.experience('stay')) {
+      items.add({
+        'emoji': '🏨',
+        'label': 'Hotel',
+        'route': '/stay/search',
+      });
+    }
+    if (config.world('book')) {
+      items.add({
+        'emoji': '⚽',
+        'label': 'Turf',
+        'route': '/turf/discover',
+      });
+    }
+
+    if (items.isEmpty) {
+      items.addAll([
+        {'emoji': '✂️', 'label': 'Salon', 'route': '/appointment/services'},
+        {'emoji': '🏨', 'label': 'Hotel', 'route': '/stay/search'},
+        {'emoji': '⚽', 'label': 'Turf', 'route': '/turf/discover'},
+      ]);
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Quick book',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'What would you like to book?',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey[500]),
+              ),
+              const SizedBox(height: 18),
+              ...items.map((item) => _buildQuickBookItem(
+                    context,
+                    item['emoji'] as String,
+                    item['label'] as String,
+                    item['route'] as String,
+                  )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickBookItem(BuildContext context, String emoji, String label, String route) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, route);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Colors.grey[400],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

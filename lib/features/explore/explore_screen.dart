@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../design_system/tokens/design_tokens.dart';
-import '../../design_system/components/buttons.dart';
-import '../../design_system/components/cards.dart';
-import '../../design_system/components/form_fields.dart';
-import '../../design_system/components/animations.dart';
-import '../../design_system/components/skeletons.dart';
+import '../../models/models.dart';
 import '../../services/api.dart';
+import '../../services/business_service.dart';
+import '../../services/city_service.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -15,325 +13,217 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  bool _isLoading = true;
+  String? _error;
+  List<Business> _businesses = [];
+  List<CityRef> _cities = [];
+  int? _selectedCityId;
+  String _selectedChip = 'All';
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  String _selectedExperience = 'all';
-  String _selectedCategory = 'all';
-  bool _showMap = false;
-  int _currentPage = 1;
-  bool _isLoading = false;
-  bool _hasMore = true;
-  final List<Map<String, dynamic>> _businesses = [];
+
+  final List<String> _chips = ['All', 'Sports', 'Stay', 'Beauty', 'Dining'];
 
   @override
   void initState() {
     super.initState();
-    _loadBusinesses();
-    _scrollController.addListener(_onScroll);
+    _initialize();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        _hasMore &&
-        !_isLoading) {
-      _loadBusinesses();
+  Future<void> _initialize() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      _cities = await CityService.getCities();
+      if (_cities.isNotEmpty) {
+        _selectedCityId = _cities.first.id;
+      }
+      await _loadBusinesses();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadBusinesses() async {
-    if (_isLoading || !_hasMore) return;
-    setState(() => _isLoading = true);
-
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
-      final queryParams = <String, String>{
-        'page': _currentPage.toString(),
-        'per_page': '20',
-      };
-      if (_selectedExperience != 'all') {
-        queryParams['experience'] = _selectedExperience;
+      final list = await BusinessService.list(
+        cityId: _selectedCityId,
+        category: _selectedChip == 'All' ? null : _selectedChip.toLowerCase(),
+        perPage: 20,
+      );
+      if (mounted) {
+        setState(() {
+          _businesses = list;
+          _isLoading = false;
+        });
       }
-      if (_selectedCategory != 'all') {
-        queryParams['category'] = _selectedCategory;
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load';
+          _isLoading = false;
+        });
       }
-      if (_searchController.text.isNotEmpty) {
-        queryParams['q'] = _searchController.text.trim();
-      }
-
-      final response = await api.get('/businesses', queryParams: queryParams);
-      final paginated = response['businesses'] as Map<String, dynamic>;
-      final data = (paginated['data'] as List).cast<Map<String, dynamic>>();
-
-      if (!mounted) return;
-      setState(() {
-        if (_currentPage == 1) _businesses.clear();
-        _businesses.addAll(data);
-        _currentPage++;
-        _hasMore = _currentPage <= (paginated['last_page'] as int);
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _onSearchChanged(String value) {
-    setState(() {
-      _currentPage = 1;
-      _hasMore = true;
-    });
-    _loadBusinesses();
+  String get _cityName {
+    for (final c in _cities) {
+      if (c.id == _selectedCityId) return c.name;
+    }
+    return 'Lamka';
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            _buildHeader(isDark),
-            _buildFilters(isDark),
-            Expanded(child: _buildContent(isDark)),
+            _buildHeader(),
+            _buildSearch(),
+            _buildChips(),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkBackground : AppColors.background,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.darkOutline : AppColors.outline,
-            width: 0.5,
-          ),
-        ),
-      ),
-      child: Column(
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: AppSearchField(
-                  controller: _searchController,
-                  hint: 'Search businesses...',
-                  onChanged: _onSearchChanged,
-                  showFilter: true,
-                  onFilterTap: _showFilterSheet,
+              Text(
+                'DISCOVER',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              AppIconButton(
-                icon: _showMap ? Icons.list_rounded : Icons.map_outlined,
-                onPressed: () => setState(() => _showMap = !_showMap),
-                type: AppButtonType.outline,
-                size: AppButtonSize.sm,
-                tooltip: _showMap ? 'List view' : 'Map view',
+              const SizedBox(height: 2),
+              Text(
+                'Nearby in $_cityName',
+                style: const TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w800,
+                  height: 1.14,
+                ),
               ),
             ],
           ),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                size: 18,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilters(bool isDark) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: ListView(
+  Widget _buildSearch() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: AppColors.line),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F143C).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 15),
+            const Icon(Icons.search, color: Color(0xFF81869a), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Search businesses or services',
+                  hintStyle: TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChips() {
+    return SizedBox(
+      height: 54,
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          RippleEffect(
-            onTap: () => _setExperience('all'),
-            child: _FilterChip(
-              label: 'All',
-              icon: Icons.apps_rounded,
-              selected: _selectedExperience == 'all',
-              onTap: () => _setExperience('all'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('restaurant'),
-            child: _FilterChip(
-              label: 'Food',
-              icon: Icons.restaurant_rounded,
-              color: AppColors.experienceRestaurant,
-              selected: _selectedExperience == 'restaurant',
-              onTap: () => _setExperience('restaurant'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('retail'),
-            child: _FilterChip(
-              label: 'Shopping',
-              icon: Icons.shopping_bag_rounded,
-              color: AppColors.experienceRetail,
-              selected: _selectedExperience == 'retail',
-              onTap: () => _setExperience('retail'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('taxi'),
-            child: _FilterChip(
-              label: 'Taxi',
-              icon: Icons.local_taxi_rounded,
-              color: AppColors.experienceTaxi,
-              selected: _selectedExperience == 'taxi',
-              onTap: () => _setExperience('taxi'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('stay'),
-            child: _FilterChip(
-              label: 'Hotels',
-              icon: Icons.hotel_rounded,
-              color: AppColors.experienceStay,
-              selected: _selectedExperience == 'stay',
-              onTap: () => _setExperience('stay'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('turf'),
-            child: _FilterChip(
-              label: 'Turf',
-              icon: Icons.sports_soccer_rounded,
-              color: AppColors.experienceTurf,
-              selected: _selectedExperience == 'turf',
-              onTap: () => _setExperience('turf'),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          RippleEffect(
-            onTap: () => _setExperience('appointment'),
-            child: _FilterChip(
-              label: 'Appointments',
-              icon: Icons.calendar_month_rounded,
-              color: AppColors.experienceAppointment,
-              selected: _selectedExperience == 'appointment',
-              onTap: () => _setExperience('appointment'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _setExperience(String exp) {
-    if (_selectedExperience == exp) return;
-    setState(() {
-      _selectedExperience = exp;
-      _currentPage = 1;
-      _hasMore = true;
-    });
-    _loadBusinesses();
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _FilterBottomSheet(
-        selectedCategory: _selectedCategory,
-        onCategoryChanged: (cat) {
-          setState(() {
-            _selectedCategory = cat;
-            _currentPage = 1;
-            _hasMore = true;
-          });
-          _loadBusinesses();
-        },
-      ),
-    );
-  }
-
-  Widget _buildContent(bool isDark) {
-    if (_businesses.isEmpty && _isLoading) {
-      return _buildShimmer(isDark);
-    }
-
-    if (_businesses.isEmpty) {
-      return _buildEmptyState(isDark);
-    }
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 350),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.05, 0),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: _showMap ? _buildMapView(isDark) : _buildListView(isDark),
-    );
-  }
-
-  Widget _buildListView(bool isDark) {
-    return RefreshIndicator(
-      key: const ValueKey('list'),
-      onRefresh: () async {
-        _currentPage = 1;
-        _hasMore = true;
-        await _loadBusinesses();
-      },
-      color: AppColors.primary,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: _businesses.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _businesses.length) {
-            return _isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(AppSpacing.lg),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink();
-          }
-          return SlideInWidget(
-            delay: Duration(milliseconds: index * 60),
-            beginOffset: const Offset(0, 0.15),
-            child: AppBusinessCard(
-              business: _businesses[index],
-              onTap: () => _navigateToDetail(_businesses[index]),
-              onPrimaryAction: () => _handlePrimaryAction(_businesses[index]),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+        itemCount: _chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 9),
+        itemBuilder: (context, i) {
+          final chip = _chips[i];
+          final active = chip == _selectedChip;
+          return GestureDetector(
+            onTap: () {
+              setState(() => _selectedChip = chip);
+              _loadBusinesses();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+              decoration: BoxDecoration(
+                color: active ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: active ? AppColors.primary : AppColors.line,
+                ),
+              ),
+              child: Text(
+                chip,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: active ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
             ),
           );
         },
@@ -341,248 +231,163 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildShimmer(bool isDark) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: 6,
-      itemBuilder: (_, _) => const BusinessCardSkeleton(),
-    );
-  }
-
-  Widget _buildEmptyState(bool isDark) {
-    return FadeInWidget(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 64,
-              color: isDark
-                  ? AppColors.darkTextTertiary
-                  : AppColors.textTertiary,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'No businesses found',
-              style: AppTypography.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Try adjusting your filters or search',
-              style: AppTypography.bodyMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextTertiary
-                    : AppColors.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMapView(bool isDark) {
-    return Container(
-      key: const ValueKey('map'),
-      color: isDark ? AppColors.darkSurface : AppColors.surface,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.map_outlined,
-              size: 64,
-              color: isDark
-                  ? AppColors.darkTextTertiary
-                  : AppColors.textTertiary,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Map view coming soon',
-              style: AppTypography.titleMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _navigateToDetail(Map<String, dynamic> business) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${business['name']} detail screen coming soon')),
-    );
-  }
-
-  void _handlePrimaryAction(Map<String, dynamic> business) {
-    final primaryExperience =
-        business['primary_experience'] as String? ?? 'directory';
-    final readiness = business['readiness'] as Map<String, dynamic>?;
-    final expReadiness = readiness?[primaryExperience] as Map<String, dynamic>?;
-    final isReady = expReadiness?['ready'] == true;
-
-    if (!isReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Contact the business directly'),
-          backgroundColor: AppColors.warning,
+  Widget _buildBody() {
+    if (_isLoading) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(18),
+        itemCount: 5,
+        itemBuilder: (_, _) => Container(
+          height: 110,
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.line),
+          ),
         ),
       );
-      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$primaryExperience flow coming soon')),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color? color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.icon,
-    this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-    final effectiveColor = color ?? AppColors.primary;
-
-    return FilterChip(
-      selected: selected,
-      onSelected: (_) => onTap(),
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: selected ? Colors.white : effectiveColor),
-          const SizedBox(width: 6),
-          Text(label),
-        ],
-      ),
-      labelStyle: AppTypography.labelMedium.copyWith(
-        color: selected
-            ? Colors.white
-            : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
-        fontWeight: FontWeight.w600,
-      ),
-      selectedColor: effectiveColor,
-      backgroundColor: isDark
-          ? AppColors.darkSurfaceVariant
-          : AppColors.surfaceVariant,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      side: BorderSide(
-        color: selected
-            ? effectiveColor
-            : (isDark ? AppColors.darkOutline : AppColors.outline),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      showCheckmark: false,
-    );
-  }
-}
-
-class _FilterBottomSheet extends StatelessWidget {
-  final String selectedCategory;
-  final ValueChanged<String> onCategoryChanged;
-
-  const _FilterBottomSheet({
-    required this.selectedCategory,
-    required this.onCategoryChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-    final categories = [
-      'all',
-      'restaurant',
-      'retail',
-      'services',
-      'health',
-      'education',
-      'automotive',
-    ];
-
-    return Container(
-      height: 350,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.xl),
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('😢', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 12),
+            Text(_error!),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: _loadBusinesses,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+      );
+    }
+
+    if (_businesses.isEmpty) {
+      return const Center(
+        child: Text(
+          'No businesses found',
+          style: TextStyle(color: AppColors.muted),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async => _loadBusinesses(),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 112),
+        itemCount: _businesses.length,
+        itemBuilder: (context, i) => _buildBusinessCard(_businesses[i]),
       ),
-      child: Column(
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: AppSpacing.md),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkOutline : AppColors.outline,
-              borderRadius: BorderRadius.circular(2),
+    );
+  }
+
+  Widget _buildBusinessCard(Business b) {
+    final photoUrl =
+        b.photos.isNotEmpty ? ApiClient.imageUrl(b.photos.first) : '';
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        '/business',
+        arguments: {'slug': b.slug},
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.line),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F1437).withValues(alpha: 0.05),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Text(
-              'Filter by Category',
-              style: AppTypography.titleLarge.copyWith(
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.textPrimary,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                color: AppColors.soft,
               ),
+              clipBehavior: Clip.antiAlias,
+              child: photoUrl.isNotEmpty
+                  ? Image.network(photoUrl, fit: BoxFit.cover)
+                  : const Icon(Icons.store, size: 36, color: AppColors.muted),
             ),
-          ),
-          Expanded(
-            child: RadioGroup<String>(
-              groupValue: selectedCategory,
-              onChanged: (value) {
-                if (value != null) {
-                  onCategoryChanged(value);
-                  Navigator.pop(context);
-                }
-              },
-              child: ListView.builder(
-                itemCount: categories.length,
-                itemBuilder: (_, index) {
-                  final cat = categories[index];
-                  return RadioListTile<String>(
-                    title: Text(
-                      cat == 'all'
-                          ? 'All Categories'
-                          : cat[0].toUpperCase() + cat.substring(1),
-                      style: AppTypography.bodyMedium,
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    b.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
-                    value: cat,
-                    activeColor: AppColors.primary,
-                  );
-                },
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${b.category?.name ?? ""} · ${b.distance ?? ""}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '★ ${b.averageRating > 0 ? b.averageRating.toStringAsFixed(1) : "New"}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFb07b16),
+                        ),
+                      ),
+                      Text(
+                        b.canBookNow ? b.bookCtaLabel : 'View',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

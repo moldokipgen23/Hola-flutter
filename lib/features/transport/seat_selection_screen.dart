@@ -3,6 +3,7 @@ import '../../design_system/tokens/design_tokens.dart';
 import '../../design_system/components/buttons.dart';
 import '../../design_system/components/cards.dart';
 import '../../design_system/components/animations.dart';
+import '../../services/api.dart';
 import 'shared_booking_screen.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
@@ -25,8 +26,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   int _selectedSeats = 1;
   final List<String> _selectedSeatLabels = [];
   bool _hasSeatLayout = false;
+  bool _isLoadingSeats = false;
+  String? _seatError;
 
-  static const List<String> _seatLabels = [
+  static const List<String> _defaultSeatLabels = [
     '1A',
     '1B',
     '1C',
@@ -53,11 +56,12 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
     '6D',
   ];
 
-  Set<String> get _bookedSeats => {'1C', '2B', '3A', '4D', '5C'};
-  Set<String> get _heldSeats => {'1A', '3C'};
+  List<String> _seatLabels = _defaultSeatLabels;
+  Set<String> _bookedSeats = {};
+  Set<String> _heldSeats = {};
 
   int get _maxSeats => widget.passengerCount;
-  double get _seatPrice => (widget.trip['min_price'] ?? 200).toDouble();
+  double get _seatPrice => (widget.trip['price'] ?? widget.trip['min_price'] ?? 200).toDouble();
 
   @override
   void initState() {
@@ -67,6 +71,61 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       _selectedSeats = 0;
     } else {
       _selectedSeats = widget.passengerCount;
+    }
+    _fetchSeatMap();
+  }
+
+  Future<void> _fetchSeatMap() async {
+    final scheduleId = widget.trip['id'];
+    if (scheduleId == null) return;
+
+    setState(() {
+      _isLoadingSeats = true;
+      _seatError = null;
+    });
+
+    try {
+      final response = await api.get('/transport/schedules/$scheduleId');
+      final data = response is Map ? response : {};
+
+      final seatsData = data['seats'] as List? ?? [];
+
+      final labels = <String>[];
+      final booked = <String>{};
+      final held = <String>{};
+
+      for (final seat in seatsData) {
+        final label = seat['label']?.toString() ?? '';
+        if (label.isEmpty) continue;
+        labels.add(label);
+        if (seat['available'] == false) {
+          if (seat['status'] == 'held') {
+            held.add(label);
+          } else {
+            booked.add(label);
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          if (labels.isNotEmpty) {
+            _seatLabels = labels;
+            _hasSeatLayout = true;
+            _selectedSeats = 0;
+          }
+          _bookedSeats = booked;
+          _heldSeats = held;
+          _isLoadingSeats = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingSeats = false;
+          _seatError = 'Could not load seat availability. Showing default layout.';
+        });
+      }
     }
   }
 
@@ -111,7 +170,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-    final name = widget.trip['name'] ?? 'Unknown operator';
+    final name = widget.trip['name'] ?? widget.trip['business']?['name'] ?? 'Unknown operator';
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
@@ -139,8 +198,32 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 children: [
                   const SizedBox(height: AppSpacing.md),
                   _buildTripHeader(isDark, name),
+                  if (_seatError != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 14, color: AppColors.warning),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              _seatError!,
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.warning),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
-                  if (_hasSeatLayout) ...[
+                  if (_isLoadingSeats)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_hasSeatLayout) ...[
                     _buildSeatLegend(isDark),
                     const SizedBox(height: AppSpacing.md),
                     _buildSeatGrid(isDark),
@@ -160,37 +243,107 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   }
 
   Widget _buildTripHeader(bool isDark, String name) {
+    final origin = widget.trip['origin'] ?? '';
+    final destination = widget.trip['destination'] ?? '';
+    final departure = widget.trip['departure_time'] ?? '';
+    final arrival = widget.trip['arrival_estimate'] ?? '';
+    final seatsLeft = widget.trip['seats_left'];
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.experienceSharedTransport.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: const Icon(
-              Icons.directions_bus_rounded,
-              color: AppColors.experienceSharedTransport,
-              size: 20,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.experienceSharedTransport.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Icon(
+                  Icons.directions_bus_rounded,
+                  color: AppColors.experienceSharedTransport,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (origin.isNotEmpty && destination.isNotEmpty)
+                      Text(
+                        '$origin → $destination',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (seatsLeft != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (seatsLeft as int) < 5
+                        ? AppColors.error.withValues(alpha: 0.1)
+                        : AppColors.experienceSharedTransport.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Text(
+                    '$seatsLeft seats left',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: (seatsLeft) < 5
+                          ? AppColors.error
+                          : AppColors.experienceSharedTransport,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (departure.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
               children: [
                 Text(
-                  name,
+                  departure,
                   style: AppTypography.labelMedium.copyWith(
                     color: isDark
                         ? AppColors.darkTextPrimary
                         : AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (arrival.isNotEmpty) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.textTertiary),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    arrival,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+                const Spacer(),
                 Text(
                   'Passengers: $_maxSeats',
                   style: AppTypography.bodySmall.copyWith(
@@ -201,7 +354,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );

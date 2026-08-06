@@ -40,6 +40,35 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> sendOtp({required String phone}) async {
+    try {
+      final response = await api.post(
+        '/auth/otp/send',
+        body: {'phone': phone},
+      );
+      if (response is Map<String, dynamic>) return response;
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> verifyOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    try {
+      final response = await api.post(
+        '/auth/otp/verify',
+        body: {'phone': phone, 'otp': otp},
+      );
+      if (response is Map<String, dynamic>) return response;
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
   static Future<void> logout() async {
     try {
       await api.post('/auth/logout', body: {});

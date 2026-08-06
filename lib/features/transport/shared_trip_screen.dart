@@ -37,12 +37,18 @@ class _SharedTripScreenState extends State<SharedTripScreen> {
       _error = null;
     });
     try {
-      final response = await api.get(
-        '/businesses',
-        queryParams: {'experience': 'shared_transport'},
-      );
+      final params = <String, String>{
+        'date': _selectedDate.toIso8601String().substring(0, 10),
+      };
+      if (_fromController.text.isNotEmpty) {
+        params['origin'] = _fromController.text;
+      }
+      if (_toController.text.isNotEmpty) {
+        params['destination'] = _toController.text;
+      }
+      final response = await api.get('/transport/search', queryParams: params);
       final data = response is Map
-          ? response['data'] ?? response['businesses'] ?? []
+          ? response['data'] ?? response['schedules'] ?? []
           : [];
       final trips = (data as List)
           .map((e) => Map<String, dynamic>.from(e))
@@ -467,15 +473,16 @@ class _TripResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = trip['name'] ?? 'Unknown operator';
-    final from = trip['locality'] ?? trip['address'] ?? '';
-    final to = trip['district'] ?? '';
+    final businessName = trip['business']?['name'] ?? trip['name'] ?? 'Unknown operator';
+    final origin = trip['origin'] ?? '';
+    final destination = trip['destination'] ?? '';
     final departureTime = trip['departure_time'] ?? '--:--';
-    final arrivalTime = trip['arrival_time'] ?? '--:--';
-    final price = trip['min_price'];
-    final seatsAvail = trip['seats_available'] ?? trip['capacity'] ?? 0;
-    final rating = (trip['average_rating'] ?? 0).toDouble();
-    final vehicleTypes = trip['vehicle_types'] as List? ?? [];
+    final arrivalTime = trip['arrival_estimate'] ?? '--:--';
+    final price = trip['price'] ?? trip['min_price'];
+    final seatsLeft = trip['seats_left'] ?? 0;
+    final vehicle = trip['vehicle'];
+    final vehicleName = vehicle?['name'] ?? vehicle?['type'] ?? '';
+    final rating = (trip['business']?['average_rating'] ?? trip['average_rating'] ?? 0).toDouble();
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -490,9 +497,7 @@ class _TripResultCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.experienceSharedTransport.withValues(
-                    alpha: 0.1,
-                  ),
+                  color: AppColors.experienceSharedTransport.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: const Icon(
@@ -507,7 +512,7 @@ class _TripResultCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      businessName,
                       style: AppTypography.labelMedium.copyWith(
                         color: isDark
                             ? AppColors.darkTextPrimary
@@ -520,11 +525,7 @@ class _TripResultCard extends StatelessWidget {
                     if (rating > 0)
                       Row(
                         children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 12,
-                            color: AppColors.warning,
-                          ),
+                          const Icon(Icons.star_rounded, size: 12, color: AppColors.warning),
                           const SizedBox(width: 2),
                           Text(
                             rating.toStringAsFixed(1),
@@ -552,62 +553,61 @@ class _TripResultCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Icon(
-                Icons.circle,
-                size: 8,
-                color: AppColors.experienceSharedTransport,
-              ),
+              Icon(Icons.circle, size: 8, color: AppColors.experienceSharedTransport),
               const SizedBox(width: AppSpacing.xs),
-              Text(
-                from.isNotEmpty ? from : 'From',
-                style: AppTypography.bodySmall.copyWith(
-                  color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.textSecondary,
+              Expanded(
+                child: Text(
+                  origin.isNotEmpty ? origin : 'From',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: Text(
+                  departureTime,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
                 ),
               ),
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      departureTime,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xs,
-                        ),
-                        color: isDark
-                            ? AppColors.darkOutline
-                            : AppColors.outline,
-                      ),
-                    ),
-                    Text(
-                      arrivalTime,
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
+                child: Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: isDark ? AppColors.darkOutline : AppColors.outline,
                 ),
               ),
-              Icon(Icons.circle_outlined, size: 8, color: AppColors.error),
-              const SizedBox(width: AppSpacing.xs),
               Text(
-                to.isNotEmpty ? to : 'To',
-                style: AppTypography.bodySmall.copyWith(
+                arrivalTime,
+                style: AppTypography.labelMedium.copyWith(
                   color: isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.textSecondary,
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                child: Icon(Icons.circle_outlined, size: 8, color: AppColors.error),
+              ),
+              Expanded(
+                child: Text(
+                  destination.isNotEmpty ? destination : 'To',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],
@@ -622,16 +622,16 @@ class _TripResultCard extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                '$seatsAvail seats available',
+                '$seatsLeft seats left',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.experienceSharedTransport,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const Spacer(),
-              if (vehicleTypes.isNotEmpty)
+              if (vehicleName.isNotEmpty)
                 Text(
-                  vehicleTypes.join(', '),
+                  vehicleName,
                   style: AppTypography.bodySmall.copyWith(
                     color: isDark
                         ? AppColors.darkTextTertiary

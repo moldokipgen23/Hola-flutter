@@ -116,37 +116,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
     );
   }
 
-  bool get _isFoodRestaurant {
-    final slug = business?.category?.slug ?? '';
-    return slug == 'restaurant' ||
-        slug == 'food' ||
-        slug == 'cafe' ||
-        slug == 'bakery' ||
-        slug == 'fast_food' ||
-        slug == 'coffee_shop';
-  }
-
-  void _navigateToOrder() {
-    if (business == null) return;
-    if (business!.hasCatalogModule) {
-      Navigator.pushNamed(
-        context,
-        '/retail/storefront',
-        arguments: {'slug': business!.slug},
-      );
-    } else if (_isFoodRestaurant) {
-      Navigator.pushNamed(
-        context,
-        '/restaurant/menu',
-        arguments: {'slug': business!.slug},
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Orders not available for this business')),
-      );
-    }
-  }
-
   void _navigateToBook() {
     if (business == null) return;
     if (business!.hasBookingsModule || business!.hasTurfModule) {
@@ -159,21 +128,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Bookings not available')));
-    }
-  }
-
-  void _navigateToBookRide() {
-    if (business == null) return;
-    if (business!.hasTransportModule) {
-      Navigator.pushNamed(
-        context,
-        '/taxi/route',
-        arguments: {'business': business},
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Transport not available')));
     }
   }
 
@@ -265,35 +219,36 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
       body: loading
           ? _buildLoadingSkeleton(isDark)
           : error != null
-          ? _buildErrorState(isDark)
-          : business == null
-          ? _buildNotFoundState(isDark)
-          : RefreshIndicator(
-              onRefresh: _loadBusiness,
-              color: AppColors.primary,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  _buildSliverAppBar(isDark),
-                  SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              ? _buildErrorState(isDark)
+              : business == null
+                  ? _buildNotFoundState(isDark)
+                  : Column(
                       children: [
-                        FadeInWidget(child: _buildHeaderInfo(isDark)),
-                        FadeInWidget(
-                          delay: const Duration(milliseconds: 100),
-                          child: _buildActionButtons(isDark),
+                        Expanded(
+                          child: CustomScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            slivers: [
+                              _buildSliverAppBar(isDark),
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildHeaderInfo(isDark),
+                                    _buildActionGrid(isDark),
+                                    if (business!.hasAnyBookingModule) ...[
+                                      _buildOfferBanner(isDark),
+                                    ],
+                                    _buildTabSection(isDark),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        FadeInWidget(
-                          delay: const Duration(milliseconds: 200),
-                          child: _buildTabSection(isDark),
-                        ),
+                        if (business!.hasAnyBookingModule)
+                          _buildStickyBookBar(isDark),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 
@@ -471,33 +426,34 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
 
   SliverAppBar _buildSliverAppBar(bool isDark) {
     return SliverAppBar(
-      expandedHeight: 280,
+      expandedHeight: 260,
       pinned: true,
       backgroundColor: AppColors.primary,
       leading: GestureDetector(
         onTap: () => Navigator.pop(context),
         child: Container(
-          margin: const EdgeInsets.all(8),
+          margin: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.black26,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            color: Colors.white.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.arrow_back, color: Colors.white),
+          child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
         ),
       ),
       actions: [
         GestureDetector(
           onTap: _toggleSave,
           child: Container(
-            margin: const EdgeInsets.all(8),
+            margin: const EdgeInsets.all(10),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black26,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
             child: Icon(
               _isSaved ? Icons.bookmark : Icons.bookmark_border,
-              color: _isSaved ? Colors.amber : Colors.white,
+              color: _isSaved ? AppColors.gold : Colors.white,
+              size: 20,
             ),
           ),
         ),
@@ -546,7 +502,10 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black45],
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black45,
+                                ],
                               ),
                             ),
                           ),
@@ -564,29 +523,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
                     _getExperienceIcon(business?.category?.slug),
                     color: AppColors.primary,
                     size: 64,
-                  ),
-                ),
-              ),
-            if (business!.photos.length > 1)
-              Positioned(
-                bottom: 48,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Text(
-                    '${_currentPhoto + 1} / ${business!.photos.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
                   ),
                 ),
               ),
@@ -623,9 +559,10 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
   Widget _buildHeaderInfo(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,153 +570,97 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
           Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      business!.name,
-                      style: AppTypography.titleLarge.copyWith(
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        if (business!.category != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: AppSpacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getExperienceColor(
-                                business!.category!.slug,
-                              ).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppRadius.xs),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _getExperienceIcon(business!.category!.slug),
-                                  size: 10,
-                                  color: _getExperienceColor(
-                                    business!.category!.slug,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                Text(
-                                  business!.category!.name,
-                                  style: AppTypography.labelSmall.copyWith(
-                                    color: _getExperienceColor(
-                                      business!.category!.slug,
-                                    ),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                        ],
-                        if (business!.locality != null)
-                          Text(
-                            business!.locality!,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: isDark
-                                  ? AppColors.darkTextTertiary
-                                  : AppColors.textTertiary,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                child: Text(
+                  business!.name,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
                 ),
               ),
               if (business!.averageRating > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 16,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.star_rounded, size: 14, color: AppColors.success),
+                      const SizedBox(width: 3),
                       Text(
                         business!.averageRating.toStringAsFixed(1),
-                        style: AppTypography.labelMedium.copyWith(
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.success,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(width: 2),
                       Text(
                         '(${business!.reviewCount})',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
+                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                       ),
                     ],
                   ),
                 ),
             ],
           ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              if (business!.category != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _getExperienceColor(business!.category!.slug).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    business!.category!.name,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: _getExperienceColor(business!.category!.slug),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (business!.locality != null)
+                Text(
+                  business!.locality!,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+            ],
+          ),
           if (business!.address != null) ...[
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 6),
             Row(
               children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 14,
-                  color: isDark
-                      ? AppColors.darkTextTertiary
-                      : AppColors.textTertiary,
-                ),
+                Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[400]),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     business!.address!,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: isDark
-                          ? AppColors.darkTextTertiary
-                          : AppColors.textTertiary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ),
               ],
             ),
           ],
           if (business!.distance != null) ...[
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 4),
             Row(
               children: [
-                Icon(
-                  Icons.directions_outlined,
-                  size: 14,
-                  color: isDark
-                      ? AppColors.darkTextTertiary
-                      : AppColors.textTertiary,
-                ),
+                Icon(Icons.directions_outlined, size: 14, color: Colors.grey[400]),
                 const SizedBox(width: 4),
                 Text(
                   business!.distance!,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextTertiary
-                        : AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -789,136 +670,147 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
     );
   }
 
-  Widget _buildActionButtons(bool isDark) {
-    final hasBookings = business?.hasBookingsModule == true;
-    final hasOrders = business?.hasOrdersModule == true;
-    final hasTransport = business?.hasTransportModule == true;
-    final hasTurf = business?.hasTurfModule == true;
-
+  Widget _buildActionGrid(bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? AppColors.darkOutline : AppColors.outline,
-            width: 0.5,
-          ),
-        ),
+        color: isDark ? AppColors.darkSurface : Colors.white,
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
+          if (business!.phone != null)
+            _buildActionTile(
+              Icons.call_rounded,
+              'Call',
+              AppColors.success,
+              _call,
+            ),
+          if (business!.phone != null) const SizedBox(width: 10),
+          if (business!.whatsapp != null)
+            _buildActionTile(
+              Icons.chat_rounded,
+              'WhatsApp',
+              const Color(0xFF25D366),
+              _whatsapp,
+            ),
+          if (business!.whatsapp != null) const SizedBox(width: 10),
+          if (business!.lat != null)
+            _buildActionTile(
+              Icons.directions_outlined,
+              'Directions',
+              AppColors.primary,
+              _directions,
+            ),
+          if (business!.lat != null) const SizedBox(width: 10),
+          _buildActionTile(
+            Icons.share_outlined,
+            'Share',
+            Colors.grey[600]!,
+            _share,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
             children: [
-              if (business!.phone != null)
-                Expanded(
-                  child: RippleEffect(
-                    child: AppButton(
-                      label: 'Call',
-                      onPressed: _call,
-                      leadingIcon: Icons.call_rounded,
-                      type: AppButtonType.primary,
-                      size: AppButtonSize.sm,
-                      isFullWidth: true,
-                    ),
-                  ),
-                ),
-              if (business!.phone != null) const SizedBox(width: AppSpacing.sm),
-              if (business!.whatsapp != null)
-                Expanded(
-                  child: RippleEffect(
-                    child: AppButton(
-                      label: 'WhatsApp',
-                      onPressed: _whatsapp,
-                      leadingIcon: Icons.chat_rounded,
-                      type: AppButtonType.ghost,
-                      size: AppButtonSize.sm,
-                      isFullWidth: true,
-                    ),
-                  ),
-                ),
-              if (business!.whatsapp != null)
-                const SizedBox(width: AppSpacing.sm),
-              if (business!.lat != null)
-                Expanded(
-                  child: RippleEffect(
-                    child: AppButton(
-                      label: 'Directions',
-                      onPressed: _directions,
-                      leadingIcon: Icons.directions_outlined,
-                      type: AppButtonType.ghost,
-                      size: AppButtonSize.sm,
-                      isFullWidth: true,
-                    ),
-                  ),
-                ),
-              if (business!.lat != null) const SizedBox(width: AppSpacing.sm),
-              RippleEffect(
-                child: AppButton(
-                  label: 'Share',
-                  onPressed: _share,
-                  leadingIcon: Icons.share_outlined,
-                  type: AppButtonType.ghost,
-                  size: AppButtonSize.sm,
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: color,
                 ),
               ),
             ],
           ),
-          if (hasBookings || hasOrders || hasTransport || hasTurf) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                if (hasTransport)
-                  Expanded(
-                    child: RippleEffect(
-                      child: AppButton(
-                        label: 'Book Ride',
-                        onPressed: _navigateToBookRide,
-                        leadingIcon: Icons.directions_car_rounded,
-                        type: AppButtonType.secondary,
-                        size: AppButtonSize.sm,
-                        isFullWidth: true,
-                      ),
-                    ),
-                  ),
-                if (hasTransport) const SizedBox(width: AppSpacing.sm),
-                if (hasBookings || hasTurf)
-                  Expanded(
-                    child: RippleEffect(
-                      child: AppButton(
-                        label: 'Book Now',
-                        onPressed: _navigateToBook,
-                        leadingIcon: Icons.calendar_month_rounded,
-                        type: AppButtonType.primary,
-                        size: AppButtonSize.sm,
-                        isFullWidth: true,
-                      ),
-                    ),
-                  ),
-                if ((hasBookings || hasTurf) && hasOrders)
-                  const SizedBox(width: AppSpacing.sm),
-                if (hasOrders)
-                  Expanded(
-                    child: RippleEffect(
-                      child: AppButton(
-                        label: 'Order Now',
-                        onPressed: _navigateToOrder,
-                        leadingIcon: Icons.shopping_bag_rounded,
-                        type: AppButtonType.outline,
-                        size: AppButtonSize.sm,
-                        isFullWidth: true,
-                      ),
-                    ),
-                  ),
-              ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfferBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Text('🏷', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'New user first-booking discount',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryDark,
+              ),
             ),
-          ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.gold,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Active',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1a1421),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStickyBookBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: GestureDetector(
+        onTap: _navigateToBook,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.gold,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Center(
+            child: Text(
+              'Book now',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1a1421),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -931,17 +823,17 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
       child: Column(
         children: [
           Container(
-            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            color: isDark ? AppColors.darkSurface : Colors.white,
             child: TabBar(
               controller: _tabController,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: isDark
-                  ? AppColors.darkTextTertiary
-                  : AppColors.textTertiary,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey[500],
               indicatorColor: AppColors.primary,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelStyle: AppTypography.labelMedium,
-              unselectedLabelStyle: AppTypography.labelMedium,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorWeight: 3,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              dividerColor: AppColors.line,
               tabs: const [
                 Tab(text: 'Overview'),
                 Tab(text: 'Services'),
@@ -955,19 +847,10 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                FadeInWidget(child: _buildOverviewTab(isDark)),
-                FadeInWidget(
-                  delay: const Duration(milliseconds: 50),
-                  child: _buildServicesTab(isDark),
-                ),
-                FadeInWidget(
-                  delay: const Duration(milliseconds: 100),
-                  child: _buildReviewsTab(isDark),
-                ),
-                FadeInWidget(
-                  delay: const Duration(milliseconds: 150),
-                  child: _buildPhotosTab(isDark),
-                ),
+                _buildOverviewTab(isDark),
+                _buildServicesTab(isDark),
+                _buildReviewsTab(isDark),
+                _buildPhotosTab(isDark),
               ],
             ),
           ),

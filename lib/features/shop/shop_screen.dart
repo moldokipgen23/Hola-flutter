@@ -137,7 +137,9 @@ class _ShopScreenState extends State<ShopScreen> {
   List<_Department> get _availableDepartments => _departments
       .where((department) => _launchConfig.experience(department.experienceKey))
       .toList();
-  _Department get _dept => _availableDepartments[_selectedDept];
+  _Department get _dept => _availableDepartments.isEmpty
+      ? _departments.first
+      : _availableDepartments[_selectedDept.clamp(0, _availableDepartments.length - 1)];
 
   @override
   void initState() {

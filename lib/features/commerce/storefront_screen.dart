@@ -53,14 +53,18 @@ class _StorefrontScreenState extends State<StorefrontScreen> {
 
     try {
       final businessResponse = await api.get('/businesses/${widget.slug}');
+      final business = Business.fromJson(businessResponse);
       final productsResponse = await api.get(
-        '/businesses/${widget.slug}/products',
+        '/products',
+        queryParams: {'business_id': business.id.toString()},
       );
 
       if (!mounted) return;
 
-      final business = Business.fromJson(businessResponse);
-      final products = (productsResponse as List)
+      final productsData = productsResponse is Map
+          ? productsResponse['products'] ?? productsResponse['data'] ?? []
+          : productsResponse;
+      final products = (productsData as List)
           .map((p) => Product.fromJson(p))
           .toList();
 

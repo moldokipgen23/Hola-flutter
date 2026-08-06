@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../design_system/tokens/design_tokens.dart';
-import '../../design_system/components/buttons.dart';
-import '../../design_system/components/cards.dart';
-import '../../design_system/components/animations.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   final Map<String, dynamic> bookingData;
@@ -15,380 +13,283 @@ class BookingConfirmationScreen extends StatelessWidget {
         '';
   }
 
-  String get _status {
-    return bookingData['status']?.toString() ?? 'pending';
-  }
-
+  String get _status => bookingData['status']?.toString() ?? 'pending';
   bool get _isRequestMode => _status == 'pending';
 
-  String get _serviceName {
-    final service = bookingData['service'];
-    if (service is Map) return service['name']?.toString() ?? '';
-    return bookingData['service_name']?.toString() ?? '';
-  }
-
-  String get _staffName {
-    final staff = bookingData['staff'];
-    if (staff is Map) return staff['name']?.toString() ?? '';
-    return bookingData['staff_name']?.toString() ?? '';
-  }
-
-  String get _bookingDate {
-    final date = bookingData['booking_date']?.toString();
-    if (date == null) return '';
-    try {
-      final d = DateTime.parse(date);
-      final months = [
-        '',
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ];
-      return '${months[d.month]} ${d.day}, ${d.year}';
-    } catch (_) {
-      return date;
-    }
-  }
-
-  String get _startTime {
-    final time = bookingData['start_time']?.toString();
-    if (time == null) return '';
-    final parts = time.split(':');
-    if (parts.length < 2) return time;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
-    final period = h < 12 ? 'AM' : 'PM';
-    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    final mStr = m > 0 ? ':${m.toString().padLeft(2, '0')}' : '';
-    return '$h12$mStr $period';
-  }
-
-  String get _businessName {
-    final business = bookingData['business'];
-    if (business is Map) return business['name']?.toString() ?? '';
-    return bookingData['business_name']?.toString() ?? '';
-  }
-
   String get _customerPhone => bookingData['customer_phone']?.toString() ?? '';
-  String get _customerName => bookingData['customer_name']?.toString() ?? '';
-  String get _notes => bookingData['notes']?.toString() ?? '';
-
-  void _callVendor(BuildContext context) {
-    if (_customerPhone.isNotEmpty) {
-      // In production, use url_launcher to make a phone call
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Calling vendor...')));
-    }
+  String get _businessPhone {
+    final business = bookingData['business'];
+    if (business is Map) return business['phone']?.toString() ?? '';
+    return bookingData['business_phone']?.toString() ?? '';
   }
 
-  void _whatsappVendor(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Opening WhatsApp...')));
+  String get _businessWhatsApp {
+    final business = bookingData['business'];
+    if (business is Map) return business['whatsapp']?.toString() ?? '';
+    return bookingData['business_whatsapp']?.toString() ?? '';
+  }
+
+  Future<void> _callVendor(BuildContext context) async {
+    final phone = _businessPhone.isNotEmpty ? _businessPhone : _customerPhone;
+    if (phone.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No phone number available')),
+        );
+      }
+      return;
+    }
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  Future<void> _whatsappVendor(BuildContext context) async {
+    final phone = _businessWhatsApp.isNotEmpty ? _businessWhatsApp : _businessPhone;
+    if (phone.isEmpty) return;
+    final cleaned = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('https://wa.me/$cleaned');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
-          padding: AppSpacing.screenPadding,
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 40),
           children: [
-            const SizedBox(height: AppSpacing.xxl),
-            _buildSuccessIcon(isDark),
-            const SizedBox(height: AppSpacing.lg),
-            _buildTitle(isDark),
-            const SizedBox(height: AppSpacing.sm),
-            _buildSubtitle(isDark),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: 20),
+            _buildSuccessAnimation(),
+            const SizedBox(height: 20),
+            _buildTitle(),
+            const SizedBox(height: 6),
+            _buildSubtitle(),
+            const SizedBox(height: 24),
             if (_bookingReference.isNotEmpty) ...[
-              SlideInWidget(
-                delay: const Duration(milliseconds: 400),
-                child: _buildReferenceCard(isDark),
-              ),
-              const SizedBox(height: AppSpacing.md),
+              _buildReferenceBadge(),
+              const SizedBox(height: 16),
             ],
-            SlideInWidget(
-              delay: const Duration(milliseconds: 450),
-              child: _buildDetailsCard(isDark),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (_isRequestMode)
-              SlideInWidget(
-                delay: const Duration(milliseconds: 480),
-                child: _buildAwaitingConfirmationBanner(isDark),
-              ),
-            if (_isRequestMode) const SizedBox(height: AppSpacing.md),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 500),
-              child: _buildVendorContactSection(context, isDark),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 550),
-              child: AppButton(
-                label: 'View in Activity',
-                leadingIcon: Icons.receipt_long_rounded,
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                type: AppButtonType.outline,
-                isFullWidth: true,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 600),
-              child: AppButton(
-                label: 'Back to Home',
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                isFullWidth: true,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
+            _buildTimelineCard(),
+            const SizedBox(height: 16),
+            if (_isRequestMode) ...[
+              _buildAwaitingBanner(),
+              const SizedBox(height: 16),
+            ],
+            _buildContactSection(context),
+            const SizedBox(height: 16),
+            _buildBackButton(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSuccessIcon(bool isDark) {
-    return const Center(child: SuccessCheckmark());
-  }
-
-  Widget _buildTitle(bool isDark) {
-    return FadeInWidget(
-      delay: const Duration(milliseconds: 200),
-      child: Center(
-        child: Text(
-          _isRequestMode ? 'Booking Request Sent!' : 'Booking Confirmed!',
-          style: AppTypography.headlineSmall.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubtitle(bool isDark) {
-    return FadeInWidget(
-      delay: const Duration(milliseconds: 300),
-      child: Center(
-        child: Text(
-          _isRequestMode
-              ? 'Your booking request has been sent. You will receive confirmation shortly.'
-              : 'Your booking has been confirmed. See you there!',
-          style: AppTypography.bodyMedium.copyWith(
-            color: isDark
-                ? AppColors.darkTextSecondary
-                : AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReferenceCard(bool isDark) {
-    return AppCard(
-      backgroundColor: AppColors.experienceAppointment.withValues(alpha: 0.08),
-      borderColor: AppColors.experienceAppointment.withValues(alpha: 0.2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.confirmation_number_outlined,
-            size: 20,
-            color: AppColors.experienceAppointment,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            'Booking #$_bookingReference',
-            style: AppTypography.titleMedium.copyWith(
-              color: AppColors.experienceAppointment,
-              fontWeight: FontWeight.w700,
+  Widget _buildSuccessAnimation() {
+    return Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.elasticOut,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: value,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.success,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 40,
+              ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Center(
+      child: Text(
+        _isRequestMode ? 'Booking request sent!' : 'Booking confirmed!',
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubtitle() {
+    return Center(
+      child: Text(
+        _isRequestMode
+            ? 'Your booking request has been sent. You will receive confirmation shortly.'
+            : 'Your booking has been confirmed. See you there!',
+        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildReferenceBadge() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          'Booking #$_bookingReference',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineCard() {
+    final steps = <Map<String, dynamic>>[
+      {'label': 'Booking confirmed', 'done': true},
+      {'label': 'Awaiting vendor response', 'done': !_isRequestMode},
+      {'label': 'Ready to visit', 'done': false},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDetailsCard(bool isDark) {
-    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Booking Details',
-            style: AppTypography.titleSmall.copyWith(
-              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          const Text(
+            'What happens next',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          if (_serviceName.isNotEmpty)
-            _buildDetailRow(
-              isDark,
-              icon: Icons.medical_services_outlined,
-              label: 'Service',
-              value: _serviceName,
-            ),
-          if (_staffName.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.person_outline_rounded,
-              label: 'Staff',
-              value: _staffName,
-            ),
-          ],
-          if (_bookingDate.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.calendar_today_rounded,
-              label: 'Date',
-              value: _bookingDate,
-            ),
-          ],
-          if (_startTime.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.access_time_rounded,
-              label: 'Time',
-              value: _startTime,
-            ),
-          ],
-          if (_businessName.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.store_outlined,
-              label: 'Venue',
-              value: _businessName,
-            ),
-          ],
-          if (_customerName.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.person_outline,
-              label: 'Name',
-              value: _customerName,
-            ),
-          ],
-          if (_customerPhone.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.phone_outlined,
-              label: 'Phone',
-              value: _customerPhone,
-            ),
-          ],
-          if (_notes.isNotEmpty) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.notes_outlined,
-              label: 'Notes',
-              value: _notes,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 16),
+          ...steps.asMap().entries.map((entry) {
+            final i = entry.key;
+            final step = entry.value;
+            final isLast = i == steps.length - 1;
+            final done = step['done'] as bool;
 
-  Widget _buildDetailRow(
-    bool isDark, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: AppColors.experienceAppointment),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
+            return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextTertiary
-                        : AppColors.textTertiary,
-                  ),
+                Column(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: done ? AppColors.success : AppColors.line,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: done
+                            ? const Icon(Icons.check, color: Colors.white, size: 14)
+                            : Text(
+                                '${i + 1}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: done ? Colors.white : AppColors.muted,
+                                ),
+                              ),
+                      ),
+                    ),
+                    if (!isLast)
+                      Container(
+                        width: 2,
+                        height: 30,
+                        color: done
+                            ? AppColors.success.withValues(alpha: 0.3)
+                            : AppColors.line,
+                      ),
+                  ],
                 ),
-                Text(
-                  value,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      step['label'] as String,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: done ? AppColors.textPrimary : AppColors.muted,
+                      ),
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildAwaitingConfirmationBanner(bool isDark) {
+  Widget _buildAwaitingBanner() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, size: 20, color: AppColors.warning),
-          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.info_outline_rounded, size: 20, color: AppColors.warning),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Awaiting Confirmation',
-                  style: AppTypography.labelMedium.copyWith(
+                const Text(
+                  'Awaiting confirmation',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.warning,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'The business will confirm your booking shortly. You will be notified once confirmed.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextTertiary
-                        : AppColors.textTertiary,
-                  ),
+                  'The business will confirm your booking shortly.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -398,42 +299,115 @@ class BookingConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVendorContactSection(BuildContext context, bool isDark) {
-    return AppCard(
+  Widget _buildContactSection(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Contact Venue',
-            style: AppTypography.titleSmall.copyWith(
-              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          const Text(
+            'Contact venue',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: AppButton(
-                  label: 'Call',
-                  leadingIcon: Icons.call_rounded,
-                  onPressed: () => _callVendor(context),
-                  type: AppButtonType.outline,
-                  isFullWidth: true,
+                child: GestureDetector(
+                  onTap: () => _callVendor(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.call_rounded, size: 16, color: AppColors.success),
+                        SizedBox(width: 6),
+                        Text(
+                          'Call',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 10),
               Expanded(
-                child: AppButton(
-                  label: 'WhatsApp',
-                  leadingIcon: Icons.chat_rounded,
-                  onPressed: () => _whatsappVendor(context),
-                  type: AppButtonType.outline,
-                  isFullWidth: true,
+                child: GestureDetector(
+                  onTap: () => _whatsappVendor(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_rounded, size: 16, color: Color(0xFF25D366)),
+                        SizedBox(width: 6),
+                        Text(
+                          'WhatsApp',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF25D366),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.gold,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Center(
+          child: Text(
+            'Back to home',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1a1421),
+            ),
+          ),
+        ),
       ),
     );
   }

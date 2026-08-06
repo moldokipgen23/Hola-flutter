@@ -4,6 +4,7 @@ import '../../services/api.dart';
 import '../../theme.dart';
 import '../../widgets/animations.dart';
 import 'forgot_password_screen.dart';
+import 'otp_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -301,6 +302,63 @@ class _AuthScreenState extends State<AuthScreen>
                               ),
                             ],
                           ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ─── Phone OTP Button ───
+            FadeInSlide(
+              duration: const Duration(milliseconds: 500),
+              delay: const Duration(milliseconds: 250),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: _loading
+                        ? null
+                        : () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const OtpScreen(),
+                              ),
+                            );
+                            if (result == true && mounted) {
+                              Navigator.pop(context);
+                            }
+                          },
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: Colors.grey[300]!),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.phone_outlined,
+                          size: 20,
+                          color: Color(0xFF1E293B),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Continue with Phone',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

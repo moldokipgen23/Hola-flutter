@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../design_system/tokens/design_tokens.dart';
 import '../../design_system/components/buttons.dart';
 import '../../design_system/components/cards.dart';
@@ -288,12 +289,41 @@ class _StayBookingConfirmationScreenState
           isFullWidth: true,
         ),
         const SizedBox(height: AppSpacing.sm),
-        AppButton(
-          label: 'Contact Property',
-          onPressed: () {},
-          leadingIcon: Icons.call_outlined,
-          type: AppButtonType.outline,
-          isFullWidth: true,
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Call Property',
+                onPressed: () async {
+                  final phone = widget.bookingData['business']?['phone']?.toString() ??
+                      widget.bookingData['business_phone']?.toString() ?? '';
+                  if (phone.isEmpty) return;
+                  final uri = Uri(scheme: 'tel', path: phone);
+                  if (await canLaunchUrl(uri)) await launchUrl(uri);
+                },
+                leadingIcon: Icons.call_outlined,
+                type: AppButtonType.outline,
+                isFullWidth: true,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppButton(
+                label: 'WhatsApp',
+                onPressed: () async {
+                  final phone = widget.bookingData['business']?['whatsapp']?.toString() ??
+                      widget.bookingData['business']?['phone']?.toString() ?? '';
+                  if (phone.isEmpty) return;
+                  final cleaned = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                  final uri = Uri.parse('https://wa.me/$cleaned');
+                  if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+                leadingIcon: Icons.chat_outlined,
+                type: AppButtonType.outline,
+                isFullWidth: true,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.sm),
         AppButton(

@@ -12,29 +12,29 @@ class LaunchConfig {
   });
 
   factory LaunchConfig.defaults() => const LaunchConfig(
-    // Phase 3: three buckets — Shopping, Booking, Directory. Ride is folded
-    // into Booking and must never be offered as a tab.
-    worlds: {'shop': true, 'book': true, 'discover': true},
+    // Launch scope: Directory + Booking only.
+    // Shop & Taxi are dormant — server turns them on when ready.
+    worlds: {'discover': true, 'book': true, 'shop': false},
     modules: {
-      'catalog': true,
-      'orders': true,
-      'inventory': true,
       'bookings': true,
-      'transport': true,
       'turf': true,
+      'catalog': false,
+      'orders': false,
+      'inventory': false,
+      'transport': false,
     },
     experiences: {
       'directory': true,
-      'retail': true,
-      'restaurant': true,
       'appointment': true,
       'stay': true,
       'turf': true,
-      'taxi': true,
-      'shared_transport': true,
-      'vehicle_rental': true,
-      'goods_transport': true,
-      'seat_event': true,
+      'retail': false,
+      'restaurant': false,
+      'taxi': false,
+      'shared_transport': false,
+      'vehicle_rental': false,
+      'goods_transport': false,
+      'seat_event': false,
     },
     onlinePayments: false,
   );

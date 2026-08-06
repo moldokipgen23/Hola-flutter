@@ -1,21 +1,30 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary brand colors — prototype purple
-  static const Color primary = Color(0xFF7C4DFF);
-  static const Color primaryLight = Color(0xFFA17DFF);
-  static const Color primaryDark = Color(0xFF4D2CA8);
-  static const Color primaryContainer = Color(0xFFF2ECFF);
+  // V3 Navy/Gold primary
+  static const Color primary = Color(0xFF111345);
+  static const Color primaryDark = Color(0xFF0c112f);
+  static const Color primaryLight = Color(0xFF1a1d66);
+  static const Color primaryContainer = Color(0xFFf2f3fa);
 
-  // Secondary / Accent — prototype orange
-  static const Color accent = Color(0xFFFF7043);
-  static const Color accentLight = Color(0xFFFF8A65);
-  static const Color accentDark = Color(0xFFE64A19);
+  // V3 Gold accent
+  static const Color accent = Color(0xFFD3A044);
+  static const Color accentLight = Color(0xFFe9c476);
+  static const Color accentDark = Color(0xFFb9822d);
+
+  // V3 Gold soft
+  static const Color gold = Color(0xFFD3A044);
+  static const Color goldSoft = Color(0xFFFFF3DD);
+
+  // V3 Navy aliases
+  static const Color navy = Color(0xFF111345);
+  static const Color navy2 = Color(0xFF1a1d66);
 
   // Semantic colors
-  static const Color success = Color(0xFF10B981);
+  static const Color success = Color(0xFF19a65a);
   static const Color successLight = Color(0xFF34D399);
-  static const Color successContainer = Color(0xFFD1FAE5);
+  static const Color successContainer = Color(0xFFe6f7ee);
+  static const Color greenSoft = Color(0xFFe6f7ee);
 
   static const Color warning = Color(0xFFF59E0B);
   static const Color warningLight = Color(0xFFFBBF24);
@@ -37,35 +46,47 @@ class AppColors {
   static const Color experienceGoodsTransport = Color(0xFF64748B);
   static const Color experienceSeatEvent = Color(0xFFF43F5E);
 
-  // Neutral colors - Light theme
+  // V3 Neutral colors - Light theme
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color background = Color(0xFFF8FAFC);
-  static const Color surfaceVariant = Color(0xFFF1F5F9);
-  static const Color outline = Color(0xFFE2E8F0);
+  static const Color background = Color(0xFFF5F6FB);
+  static const Color surfaceVariant = Color(0xFFF0F2F8);
+  static const Color outline = Color(0xFFE7E9F1);
   static const Color outlineVariant = Color(0xFFCBD5E1);
 
-  static const Color textPrimary = Color(0xFF0F172A);
+  static const Color textPrimary = Color(0xFF0b1234);
   static const Color textSecondary = Color(0xFF475569);
-  static const Color textTertiary = Color(0xFF94A3B8);
+  static const Color textTertiary = Color(0xFF73788d);
   static const Color textInverse = Color(0xFFFFFFFF);
 
   static const Color onPrimary = Color(0xFFFFFFFF);
-  static const Color onSurface = Color(0xFF0F172A);
+  static const Color onSurface = Color(0xFF0b1234);
   static const Color onSurfaceVariant = Color(0xFF475569);
 
-  // Neutral colors - Dark theme
-  static const Color darkSurface = Color(0xFF1E293B);
-  static const Color darkBackground = Color(0xFF0F172A);
-  static const Color darkSurfaceVariant = Color(0xFF334155);
-  static const Color darkOutline = Color(0xFF475569);
-  static const Color darkOutlineVariant = Color(0xFF64748B);
+  // V3 muted
+  static const Color muted = Color(0xFF73788d);
+
+  // V3 soft (icon tiles, action grid)
+  static const Color soft = Color(0xFFf0f2f8);
+
+  // V3 line (borders)
+  static const Color line = Color(0xFFe7e9f1);
+
+  // V3 card
+  static const Color card = Color(0xFFFFFFFF);
+
+  // Neutral colors - Dark theme (navy-tinted)
+  static const Color darkSurface = Color(0xFF141638);
+  static const Color darkBackground = Color(0xFF0c0f2e);
+  static const Color darkSurfaceVariant = Color(0xFF1a1d50);
+  static const Color darkOutline = Color(0xFF2a2d60);
+  static const Color darkOutlineVariant = Color(0xFF3a3d70);
 
   static const Color darkTextPrimary = Color(0xFFF8FAFC);
   static const Color darkTextSecondary = Color(0xFFCBD5E1);
   static const Color darkTextTertiary = Color(0xFF94A3B8);
-  static const Color darkTextInverse = Color(0xFF0F172A);
+  static const Color darkTextInverse = Color(0xFF0b1234);
 
-  static const Color darkOnPrimary = Color(0xFF0F172A);
+  static const Color darkOnPrimary = Color(0xFF0c0f2e);
   static const Color darkOnSurface = Color(0xFFF8FAFC);
   static const Color darkOnSurfaceVariant = Color(0xFFCBD5E1);
 
@@ -223,8 +244,13 @@ class AppRadius {
   static const double sm = 8;
   static const double md = 12;
   static const double lg = 16;
-  static const double xl = 24;
-  static const double xxl = 32;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double card = 22;
+  static const double hero = 25;
+  static const double detailCard = 28;
+  static const double sheet = 28;
+  static const double pill = 999;
   static const double full = 9999;
 }
 
@@ -235,6 +261,13 @@ class AppElevation {
   static const double level3 = 6;
   static const double level4 = 8;
   static const double level5 = 12;
+
+  // V3 card shadow
+  static const BoxShadow cardShadow = BoxShadow(
+    color: Color(0x1A141846),
+    blurRadius: 40,
+    offset: Offset(0, 16),
+  );
 
   static List<BoxShadow> shadowLevel1(Color shadowColor) => [
     BoxShadow(color: shadowColor, blurRadius: 4, offset: const Offset(0, 1)),

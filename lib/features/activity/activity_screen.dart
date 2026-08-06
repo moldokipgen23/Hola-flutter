@@ -3,6 +3,10 @@ import '../../design_system/tokens/design_tokens.dart';
 import '../../design_system/components/buttons.dart';
 import '../../design_system/components/animations.dart';
 import '../../design_system/components/skeletons.dart';
+import '../../models/order.dart';
+import '../../services/api.dart';
+import 'my_orders_screen.dart';
+import 'my_bookings_screen.dart';
 
 class ActivityScreen extends StatefulWidget {
   const ActivityScreen({super.key});
@@ -14,10 +18,7 @@ class ActivityScreen extends StatefulWidget {
 class _ActivityScreenState extends State<ActivityScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ScrollController _scrollController = ScrollController();
-  int _currentPage = 1;
   bool _isLoading = false;
-  bool _hasMore = true;
   List<Map<String, dynamic>> _activities = [];
 
   static const List<Map<String, dynamic>> _tabData = [
@@ -34,126 +35,136 @@ class _ActivityScreenState extends State<ActivityScreen>
     super.initState();
     _tabController = TabController(length: _tabData.length, vsync: this);
     _loadActivities();
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        _hasMore &&
-        !_isLoading) {
-      _loadActivities();
-    }
-  }
-
   Future<void> _loadActivities() async {
-    if (_isLoading || !_hasMore) return;
+    if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
+      final results = await Future.wait([
+        api.get('/my-orders').catchError((_) => const <String, dynamic>{}),
+        api.get('/my-bookings').catchError((_) => const <String, dynamic>{}),
+      ]);
+
+      final ordersRes = results[0] is Map<String, dynamic>
+          ? results[0] as Map<String, dynamic>
+          : const <String, dynamic>{};
+      final bookingsRes = results[1] is Map<String, dynamic>
+          ? results[1] as Map<String, dynamic>
+          : const <String, dynamic>{};
+
+      final orders = (ordersRes['orders']?['data'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(Order.fromJson)
+          .toList();
+      final bookings = (bookingsRes['bookings']?['data'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+
+      final activities = <Map<String, dynamic>>[
+        for (final o in orders) _orderToActivity(o),
+        for (final b in bookings) _bookingToActivity(b),
+      ]..sort((a, b) {
+          final at = a['time'] as String;
+          final bt = b['time'] as String;
+          return at.compareTo(bt);
+        });
 
       if (!mounted) return;
       setState(() {
-        if (_currentPage == 1) {
-          _activities = _getMockActivities();
-        }
+        _activities = activities;
         _isLoading = false;
-        _hasMore = false;
       });
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _activities = [];
+        _isLoading = false;
+      });
     }
   }
 
-  List<Map<String, dynamic>> _getMockActivities() {
-    return [
-      {
-        'id': '1',
-        'type': 'trip',
-        'title': 'Ride to Airport',
-        'subtitle': 'Pilot Taxi Service • Sedan',
-        'status': 'confirmed',
-        'statusLabel': 'Confirmed',
-        'amount': '₹450',
-        'time': 'Today, 10:30 AM',
-        'icon': Icons.local_taxi_rounded,
-        'iconColor': AppColors.experienceTaxi,
-        'actions': ['Track', 'Contact Driver', 'Cancel'],
-      },
-      {
-        'id': '2',
-        'type': 'order',
-        'title': 'Order from Tasty Bites',
-        'subtitle': 'Butter Chicken, Naan, Rice',
-        'status': 'preparing',
-        'statusLabel': 'Preparing',
-        'amount': '₹320',
-        'time': '15 mins ago',
-        'icon': Icons.restaurant_rounded,
-        'iconColor': AppColors.experienceRestaurant,
-        'actions': ['Track', 'Contact Restaurant'],
-      },
-      {
-        'id': '3',
-        'type': 'booking',
-        'title': 'Turf Booking - 7v7',
-        'subtitle': 'Fit Turf • Court 1',
-        'status': 'pending',
-        'statusLabel': 'Pending',
-        'amount': '₹800',
-        'time': 'Tomorrow, 6:00 PM',
-        'icon': Icons.sports_soccer_rounded,
-        'iconColor': AppColors.experienceTurf,
-        'actions': ['View Details', 'Cancel'],
-      },
-      {
-        'id': '4',
-        'type': 'stay',
-        'title': 'Hotel Stay - Deluxe Room',
-        'subtitle': 'Grand Stay Hotel • 2 Nights',
-        'status': 'confirmed',
-        'statusLabel': 'Confirmed',
-        'amount': '₹5,000',
-        'time': 'Check-in: Dec 25',
-        'icon': Icons.hotel_rounded,
-        'iconColor': AppColors.experienceStay,
-        'actions': ['View Details', 'Modify'],
-      },
-      {
-        'id': '5',
-        'type': 'appointment',
-        'title': 'Haircut Appointment',
-        'subtitle': 'Style Salon • John',
-        'status': 'completed',
-        'statusLabel': 'Completed',
-        'amount': '₹500',
-        'time': 'Yesterday, 4:00 PM',
-        'icon': Icons.content_cut_rounded,
-        'iconColor': AppColors.experienceAppointment,
-        'actions': ['Rate', 'Re-book'],
-      },
-      {
-        'id': '6',
-        'type': 'trip',
-        'title': 'Bus to Imphal',
-        'subtitle': 'Pilot Bus Service • AC Sleeper',
-        'status': 'confirmed',
-        'statusLabel': 'Confirmed',
-        'amount': '₹1,200',
-        'time': 'Dec 28, 8:00 PM',
-        'icon': Icons.directions_bus_rounded,
-        'iconColor': AppColors.experienceSharedTransport,
-        'actions': ['View Ticket', 'Contact'],
-      },
+  Map<String, dynamic> _orderToActivity(Order o) {
+    final itemsLabel = o.items.take(2).map((i) => i.name).join(', ');
+    final subtitle = [
+      o.businessName ?? 'Order',
+      if (itemsLabel.isNotEmpty) itemsLabel,
+    ].join(' • ');
+    final statusLabel = o.displayStatus;
+    final actions = <String>[];
+    if (o.isPending || o.isConfirmed || o.isPreparing) actions.add('Track');
+    if (o.isDelivered) actions.add('Reorder');
+    if (o.isPending || o.isConfirmed) actions.add('Cancel');
+    return {
+      'id': 'order_${o.id}',
+      'type': 'orders',
+      'title': 'Order from ${o.businessName ?? 'Business'}',
+      'subtitle': subtitle,
+      'status': o.status,
+      'statusLabel': statusLabel,
+      'amount': '₹${o.total.toStringAsFixed(0)}',
+      'time': _formatTime(o.createdAt),
+      'icon': Icons.shopping_bag_rounded,
+      'iconColor': AppColors.experienceRestaurant,
+      'actions': actions,
+      'data': o,
+    };
+  }
+
+  Map<String, dynamic> _bookingToActivity(Map<String, dynamic> b) {
+    final business = b['business'] is Map
+        ? b['business'] as Map<String, dynamic>
+        : null;
+    final service = b['service'] is Map ? b['service'] as Map<String, dynamic> : null;
+    final businessName = business?['name']?.toString() ?? 'Booking';
+    final serviceName = service?['name']?.toString() ?? 'Service';
+    final status = b['status']?.toString() ?? 'pending';
+    final statusLabel = status[0].toUpperCase() + status.substring(1);
+    final amount = b['total'] ?? b['amount'] ?? b['price'] ?? 0;
+    final scheduledAt = b['starts_at'] ?? b['scheduled_at'] ?? b['booking_time'];
+    final time = scheduledAt != null ? _formatTime(DateTime.tryParse(scheduledAt.toString())) : '';
+    return {
+      'id': 'booking_${b['id']}',
+      'type': 'bookings',
+      'title': '$serviceName at $businessName',
+      'subtitle': businessName,
+      'status': status,
+      'statusLabel': statusLabel,
+      'amount': '₹${(amount is num ? amount : double.tryParse(amount.toString()) ?? 0).toStringAsFixed(0)}',
+      'time': time,
+      'icon': Icons.calendar_month_rounded,
+      'iconColor': AppColors.experienceAppointment,
+      'actions': status == 'cancelled' || status == 'completed'
+          ? const <String>[]
+          : const <String>['View Details', 'Cancel'],
+      'data': b,
+    };
+  }
+
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final now = DateTime.now();
+    final date = DateTime(dt.year, dt.month, dt.day);
+    final today = DateTime(now.year, now.month, now.day);
+    final dayDiff = today.difference(date).inDays;
+    final hh = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final timeStr = '$hh:$mm $ampm';
+    if (dayDiff == 0) return 'Today, $timeStr';
+    if (dayDiff == 1) return 'Yesterday, $timeStr';
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
+    return '${dt.day} ${months[dt.month - 1]}, $timeStr';
   }
 
   @override
@@ -213,10 +224,6 @@ class _ActivityScreenState extends State<ActivityScreen>
           AppIconButton(
             icon: Icons.refresh_rounded,
             onPressed: () {
-              setState(() {
-                _currentPage = 1;
-                _hasMore = true;
-              });
               _loadActivities();
             },
             type: AppButtonType.ghost,
@@ -431,15 +438,30 @@ class _ActivityScreenState extends State<ActivityScreen>
   }
 
   void _navigateToDetail(Map<String, dynamic> activity) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${activity['type']} detail coming soon')),
+    final data = activity['data'];
+    if (activity['type'] == 'orders' && data is Order) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
     );
   }
 
   void _handleAction(Map<String, dynamic> activity, String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$action for ${activity['type']} coming soon')),
-    );
+    switch (action) {
+      case 'Track':
+      case 'Reorder':
+      case 'Cancel':
+      case 'View Details':
+        _navigateToDetail(activity);
+      default:
+        break;
+    }
   }
 }
 

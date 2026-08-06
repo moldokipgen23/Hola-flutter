@@ -6,33 +6,34 @@ class BusinessService {
     dynamic data,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    if (data == null) return [];
-    if (data is List) {
-      return data.map<T>((e) => fromJson(e as Map<String, dynamic>)).toList();
+    final items = _extractItems(data);
+    final result = <T>[];
+    for (final e in items) {
+      try {
+        if (e is Map<String, dynamic>) {
+          result.add(fromJson(e));
+        }
+      } catch (_) {
+        // Skip a single malformed record instead of blanking the whole feed.
+      }
     }
+    return result;
+  }
+
+  static List<dynamic> _extractItems(dynamic data) {
+    if (data == null) return const [];
+    if (data is List) return data;
     if (data is Map<String, dynamic>) {
       final businesses = data['businesses'];
-      if (businesses is List) {
-        return businesses
-            .map<T>((e) => fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
+      if (businesses is List) return businesses;
       if (businesses is Map<String, dynamic>) {
         final inner = businesses['data'];
-        if (inner is List) {
-          return inner
-              .map<T>((e) => fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
+        if (inner is List) return inner;
       }
       final items = data['data'];
-      if (items is List) {
-        return items
-            .map<T>((e) => fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
+      if (items is List) return items;
     }
-    return [];
+    return const [];
   }
 
   static Future<List<Business>> list({
@@ -41,6 +42,7 @@ class BusinessService {
     bool? featured,
     bool? popular,
     String? search,
+    int? cityId,
     int page = 1,
     int perPage = 20,
   }) async {
@@ -54,6 +56,7 @@ class BusinessService {
       if (featured != null) params['featured'] = featured ? '1' : '0';
       if (popular != null) params['popular'] = popular ? '1' : '0';
       if (search != null) params['q'] = search;
+      if (cityId != null) params['city_id'] = cityId.toString();
 
       final response = await api.get('/businesses', queryParams: params);
       return _parseList(response, Business.fromJson);

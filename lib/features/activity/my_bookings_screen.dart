@@ -91,6 +91,99 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     }
   }
 
+  Future<void> _rescheduleBooking(Booking b) async {
+    final result = await showDatePicker(
+      context: context,
+      initialDate: b.bookingDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+    );
+    if (result == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: b.startTime.hour,
+        minute: b.startTime.minute,
+      ),
+    );
+    if (time == null || !mounted) return;
+
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Reschedule Booking?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'New date: ${result.day}/${result.month}/${result.year}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'New time: ${time.format(ctx)}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                decoration:
+                    const InputDecoration(labelText: 'Reason (optional)'),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('Reschedule'),
+            ),
+          ],
+        );
+      },
+    );
+    if (reason == null || !mounted) return;
+
+    final dateStr =
+        '${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+    try {
+      await api.put(
+        '/my-bookings/${b.id}/reschedule',
+        body: {
+          'to_date': dateStr,
+          'to_time': timeStr,
+          'reason': reason,
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Booking rescheduled')));
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed: ${e.toString().replaceAll("Exception: ", "")}',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,6 +192,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         title: const Text('My Bookings', style: TextStyle(fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0.5,
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pushNamed(context, '/booking-lookup'),
+            icon: const Icon(Icons.search_rounded, size: 18),
+            label: const Text('Find Booking', style: TextStyle(fontSize: 13)),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+          ),
+        ],
       ),
       body: loading
           ? const Center(
@@ -114,6 +215,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   Text(
                     'No bookings yet',
                     style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/booking-lookup'),
+                    icon: const Icon(Icons.search_rounded, size: 18),
+                    label: const Text('Find my booking'),
                   ),
                 ],
               ),
@@ -246,6 +354,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
+                              TextButton.icon(
+                                onPressed: () => _rescheduleBooking(b),
+                                icon: const Icon(
+                                  Icons.event_repeat_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Reschedule',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppTheme.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
                               TextButton.icon(
                                 onPressed: () => _cancelBooking(b),
                                 icon: const Icon(

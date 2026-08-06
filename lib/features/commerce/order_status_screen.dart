@@ -41,7 +41,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     });
 
     try {
-      final response = await api.get('/orders/${widget.orderId}');
+      final response = await api.get('/my-orders/${widget.orderId}');
       if (!mounted) return;
       setState(() {
         _order = response;
@@ -90,7 +90,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     if (confirmed != true) return;
 
     try {
-      await api.post('/orders/${widget.orderId}/cancel');
+      await api.put('/my-orders/${widget.orderId}/cancel');
       if (!mounted) return;
       _loadOrder();
       ScaffoldMessenger.of(

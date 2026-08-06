@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../design_system/tokens/design_tokens.dart';
-import '../../design_system/components/buttons.dart';
-import '../../design_system/components/cards.dart';
-import '../../design_system/components/form_fields.dart';
-import '../../design_system/components/animations.dart';
 import '../../models/models.dart';
 import '../../services/api.dart';
 import 'booking_confirmation_screen.dart';
@@ -41,20 +37,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   String get _formattedDate {
     final d = widget.selectedDate;
-    final months = [
-      '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
     ];
     return '${months[d.month]} ${d.day}, ${d.year}';
   }
@@ -85,10 +70,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         'payment_method': 'cash',
       };
 
-      if (widget.staffId != null) {
-        body['staff_id'] = widget.staffId;
-      }
-
+      if (widget.staffId != null) body['staff_id'] = widget.staffId;
       if (_requestsController.text.trim().isNotEmpty) {
         body['notes'] = _requestsController.text.trim();
       }
@@ -134,265 +116,355 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).colorScheme.brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-          ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Booking Summary',
-          style: AppTypography.titleMedium.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+        title: const Text(
+          'Review & pay',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(40),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+            child: Row(
+              children: [
+                _buildStepIndicator(1, 'Date & Time', false),
+                Expanded(child: Container(height: 2, color: AppColors.line)),
+                _buildStepIndicator(2, 'Review', true),
+              ],
+            ),
           ),
         ),
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: AppSpacing.screenPadding,
+        child: Column(
           children: [
-            SlideInWidget(
-              delay: const Duration(milliseconds: 50),
-              child: _buildSummaryCard(isDark),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 100),
-              child: _buildSectionTitle(
-                isDark,
-                'Your Details',
-                Icons.person_outline,
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 100),
+                children: [
+                  _buildSummaryCard(),
+                  const SizedBox(height: 16),
+                  _buildFormSection(),
+                  const SizedBox(height: 16),
+                  _buildPaymentNotice(),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: _nameController,
-              label: 'Full Name *',
-              hint: 'Your name',
-              prefixIcon: Icons.person_outline,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Name is required' : null,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: _phoneController,
-              label: 'Phone Number *',
-              hint: 'Your phone number',
-              prefixIcon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Phone number is required'
-                  : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildSectionTitle(
-              isDark,
-              'Special Requests',
-              Icons.notes_outlined,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            AppTextField(
-              controller: _requestsController,
-              hint: 'Any preferences or special requirements...',
-              maxLines: 3,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 200),
-              child: _buildPaymentNotice(isDark),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SlideInWidget(
-              delay: const Duration(milliseconds: 250),
-              child: AppButton(
-                label: 'Confirm Booking',
-                trailingIcon: Icons.check_circle_outline_rounded,
-                onPressed: _submitting ? null : _confirmBooking,
-                isLoading: _submitting,
-                isFullWidth: true,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
+            _buildBottomBar(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummaryCard(bool isDark) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Booking Details',
-            style: AppTypography.titleMedium.copyWith(
-              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _buildDetailRow(
-            isDark,
-            icon: Icons.medical_services_outlined,
-            label: 'Service',
-            value: widget.service?.name ?? 'Not specified',
-          ),
-          const Divider(height: AppSpacing.md),
-          _buildDetailRow(
-            isDark,
-            icon: Icons.calendar_today_rounded,
-            label: 'Date',
-            value: _formattedDate,
-          ),
-          const Divider(height: AppSpacing.md),
-          _buildDetailRow(
-            isDark,
-            icon: Icons.access_time_rounded,
-            label: 'Time',
-            value: _formattedTime,
-          ),
-          if (widget.service != null) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.timer_outlined,
-              label: 'Duration',
-              value: '${widget.service!.duration} minutes',
-            ),
-          ],
-          if (widget.staffName != null) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.person_outline_rounded,
-              label: 'Staff',
-              value: widget.staffName!,
-            ),
-          ] else ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.person_outline_rounded,
-              label: 'Staff',
-              value: 'Any available',
-            ),
-          ],
-          if (widget.service != null) ...[
-            const Divider(height: AppSpacing.md),
-            _buildDetailRow(
-              isDark,
-              icon: Icons.payments_outlined,
-              label: 'Price',
-              value: '₹${widget.service!.price.toStringAsFixed(0)}',
-              valueColor: AppColors.experienceAppointment,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(
-    bool isDark, {
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.experienceAppointment),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.bodyMedium.copyWith(
-                color: isDark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: AppTypography.bodyMedium.copyWith(
-              color:
-                  valueColor ??
-                  (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(bool isDark, String title, IconData icon) {
+  Widget _buildStepIndicator(int step, String label, bool isActive) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : AppColors.line,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              '$step',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: isActive ? Colors.white : AppColors.muted,
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: AppSpacing.xs),
+        const SizedBox(width: 6),
         Text(
-          title,
-          style: AppTypography.titleSmall.copyWith(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isActive ? AppColors.primary : AppColors.muted,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPaymentNotice(bool isDark) {
+  Widget _buildSummaryCard() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Booking details',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildDetailRow(Icons.medical_services_outlined, 'Service', widget.service?.name ?? 'Not specified'),
+          _buildDetailRow(Icons.calendar_today_rounded, 'Date', _formattedDate),
+          _buildDetailRow(Icons.access_time_rounded, 'Time', _formattedTime),
+          if (widget.service != null)
+            _buildDetailRow(Icons.timer_outlined, 'Duration', '${widget.service!.duration} minutes'),
+          _buildDetailRow(
+            Icons.person_outline_rounded,
+            'Staff',
+            widget.staffName ?? 'Any available',
+          ),
+          if (widget.service != null)
+            _buildDetailRow(
+              Icons.payments_outlined,
+              'Price',
+              '₹${widget.service!.price.toStringAsFixed(0)}',
+              valueColor: AppColors.primary,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.muted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormSection() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF141846).withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your details',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildInput(
+            controller: _nameController,
+            label: 'Full name',
+            hint: 'Your name',
+            icon: Icons.person_outline,
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+          ),
+          const SizedBox(height: 12),
+          _buildInput(
+            controller: _phoneController,
+            label: 'Phone number',
+            hint: 'Your phone number',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Phone is required' : null,
+          ),
+          const SizedBox(height: 12),
+          _buildInput(
+            controller: _requestsController,
+            label: 'Special requests',
+            hint: 'Any preferences or special requirements...',
+            icon: Icons.notes_outlined,
+            maxLines: 3,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          validator: validator,
+          maxLines: maxLines,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+            prefixIcon: Icon(icon, size: 18, color: Colors.grey[400]),
+            filled: true,
+            fillColor: AppColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: AppColors.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.error),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentNotice() {
+    return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.success.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          Icon(Icons.payments_outlined, size: 20, color: AppColors.success),
-          const SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.payments_outlined, size: 20, color: AppColors.success),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Pay at venue',
-                  style: AppTypography.labelMedium.copyWith(
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.success,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Payment will be collected at the venue after your appointment.',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: isDark
-                        ? AppColors.darkTextTertiary
-                        : AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: GestureDetector(
+          onTap: _submitting ? null : _confirmBooking,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: _submitting ? AppColors.line : AppColors.gold,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: _submitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.muted,
+                      ),
+                    )
+                  : const Text(
+                      'Confirm booking',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1a1421),
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }

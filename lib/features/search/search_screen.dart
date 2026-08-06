@@ -10,6 +10,43 @@ import '../../features/shared/business_detail_screen.dart';
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
+  /// `/search` returns `{"sections": [{"type": "businesses", "items": [...]}]}`.
+  /// Tolerate both that shape and a legacy top-level `businesses` array.
+  static List<Business> parseSearchResults(dynamic result) {
+    if (result is! Map<String, dynamic>) return const [];
+    final parsed = <Business>[];
+
+    final sections = result['sections'];
+    if (sections is List) {
+      for (final section in sections) {
+        if (section is! Map<String, dynamic>) continue;
+        if (section['type'] != 'businesses') continue;
+        final items = section['items'];
+        if (items is! List) continue;
+        for (final item in items) {
+          if (item is! Map<String, dynamic>) continue;
+          try {
+            parsed.add(Business.fromJson(item));
+          } catch (_) {
+            // Skip a single malformed result instead of failing the whole search.
+          }
+        }
+      }
+    }
+
+    final legacy = result['businesses'];
+    if (legacy is List && parsed.isEmpty) {
+      for (final item in legacy) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          parsed.add(Business.fromJson(item));
+        } catch (_) {}
+      }
+    }
+
+    return parsed;
+  }
+
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -31,10 +68,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final result = await api.get('/search', queryParams: {'q': query.trim()});
+      final parsed = SearchScreen.parseSearchResults(result);
       setState(() {
-        results = (result['businesses'] as List)
-            .map((b) => Business.fromJson(b))
-            .toList();
+        results = parsed;
         searched = true;
         loading = false;
       });

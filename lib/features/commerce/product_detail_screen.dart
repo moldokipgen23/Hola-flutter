@@ -35,11 +35,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _loadRelatedProducts() async {
     try {
       final response = await api.get(
-        '/businesses/${widget.business.slug}/products',
+        '/products',
+        queryParams: {'business_id': widget.business.id.toString()},
       );
       if (!mounted) return;
 
-      final products = (response as List)
+      final data = response is Map
+          ? response['products'] ?? response['data'] ?? response
+          : response;
+      final products = (data as List)
           .map((p) => Product.fromJson(p))
           .where((p) => p.id != widget.product.id)
           .take(6)

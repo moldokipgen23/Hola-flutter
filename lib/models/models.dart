@@ -49,6 +49,74 @@ class Category {
   }
 }
 
+/// The `city` object returned on every business summary.
+class CityRef {
+  final int id;
+  final String name;
+  final String? slug;
+  final String? state;
+
+  const CityRef({
+    required this.id,
+    required this.name,
+    this.slug,
+    this.state,
+  });
+
+  factory CityRef.fromJson(Map<String, dynamic> json) => CityRef(
+    id: json['id'],
+    name: json['name']?.toString() ?? 'Unknown',
+    slug: json['slug']?.toString(),
+    state: json['state']?.toString(),
+  );
+
+  String get displayName =>
+      (state != null && state!.isNotEmpty) ? '$name · $state' : name;
+}
+
+/// The `booking` capability object returned on every business summary.
+/// Drives the card-level CTA: "Book" (in-app flow) or "Call/WhatsApp".
+class BookingCapability {
+  final bool canBookOnline;
+  final String bookCta; // in_app | call_or_whatsapp | none
+  final List<String> readyExperiences;
+  final String? primaryExperience;
+  final String? phone;
+  final String? whatsapp;
+
+  const BookingCapability({
+    required this.canBookOnline,
+    required this.bookCta,
+    this.readyExperiences = const [],
+    this.primaryExperience,
+    this.phone,
+    this.whatsapp,
+  });
+
+  factory BookingCapability.fromJson(Map<String, dynamic> json) {
+    final contact = json['contact'];
+    return BookingCapability(
+      canBookOnline: json['can_book_online'] == true,
+      bookCta: json['book_cta']?.toString() ?? 'none',
+      readyExperiences:
+          (json['ready_experiences'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      primaryExperience: json['primary_experience']?.toString(),
+      phone: contact is Map ? contact['phone']?.toString() : null,
+      whatsapp: contact is Map ? contact['whatsapp']?.toString() : null,
+    );
+  }
+
+  bool get isInApp => bookCta == 'in_app';
+  bool get isCallOrWhatsapp => bookCta == 'call_or_whatsapp';
+  bool get canCall =>
+      !canBookOnline && (phone != null && phone!.isNotEmpty);
+  bool get canWhatsApp =>
+      !canBookOnline && (whatsapp != null && whatsapp!.isNotEmpty);
+}
+
 class Business {
   final int id;
   final String name;
@@ -76,6 +144,11 @@ class Business {
   final String? claimStatus;
   final String? distance;
   final bool? isSaved;
+  final CityRef? city;
+  final BookingCapability? booking;
+  final List<String> experiences;
+  final String? primaryExperience;
+  final Map<String, dynamic>? primaryAction;
 
   // New fields
   final bool? isBookable;
@@ -122,6 +195,11 @@ class Business {
     this.claimStatus,
     this.distance,
     this.isSaved,
+    this.city,
+    this.booking,
+    this.experiences = const [],
+    this.primaryExperience,
+    this.primaryAction,
     this.isBookable,
     this.priceRange,
     this.serviceType,
@@ -155,7 +233,11 @@ class Business {
       whatsapp: json['whatsapp'],
       email: json['email'],
       website: json['website'],
-      photos: json['photos'] != null ? List<String>.from(json['photos']) : [],
+      photos: (json['photos'] as List?)
+              ?.whereType<String>()
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [],
       workingHours: json['working_hours'],
       isActive: json['is_active'] ?? true,
       isFeatured: json['is_featured'] ?? false,
@@ -174,6 +256,18 @@ class Business {
       claimStatus: json['claim_status'],
       distance: json['distance']?.toString(),
       isSaved: json['is_saved'],
+      city: json['city'] != null
+          ? CityRef.fromJson(json['city'] as Map<String, dynamic>)
+          : null,
+      booking: json['booking'] != null
+          ? BookingCapability.fromJson(json['booking'] as Map<String, dynamic>)
+          : null,
+      experiences: (json['experiences'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      primaryExperience: json['primary_experience']?.toString(),
+      primaryAction: json['primary_action'],
       isBookable: json['is_bookable'],
       priceRange: json['price_range'],
       serviceType: json['service_type'],
@@ -209,6 +303,29 @@ class Business {
   bool get hasInventoryModule => enabledModules?['inventory'] == true;
   bool get hasTransportModule => enabledModules?['transport'] == true;
   bool get hasTurfModule => enabledModules?['turf'] == true;
+  bool get hasAnyBookingModule => hasBookingsModule || hasTurfModule;
+
+  bool get canBookNow => booking?.canBookOnline == true;
+
+  String? get bookingPhone =>
+      booking?.phone != null ? booking!.phone : phone;
+  String? get bookingWhatsApp =>
+      booking?.whatsapp != null ? booking!.whatsapp : whatsapp;
+
+  /// Human label for the primary in-app booking flow, e.g. "Book", "Reserve".
+  String get bookCtaLabel {
+    if (!canBookNow) return 'Book';
+    switch (booking?.primaryExperience) {
+      case 'stay':
+        return 'Check Availability';
+      case 'turf':
+        return 'Book Slots';
+      case 'seat_event':
+        return 'Book Seats';
+      default:
+        return primaryAction?['label']?.toString() ?? 'Book Now';
+    }
+  }
 }
 
 class Product {
