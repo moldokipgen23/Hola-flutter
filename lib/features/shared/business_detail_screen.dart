@@ -156,33 +156,6 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
     }
   }
 
-  Color _getExperienceColor(String? experience) {
-    switch (experience) {
-      case 'restaurant':
-        return AppColors.experienceRestaurant;
-      case 'retail':
-        return AppColors.experienceRetail;
-      case 'appointment':
-        return AppColors.experienceAppointment;
-      case 'stay':
-        return AppColors.experienceStay;
-      case 'turf':
-        return AppColors.experienceTurf;
-      case 'taxi':
-        return AppColors.experienceTaxi;
-      case 'shared_transport':
-        return AppColors.experienceSharedTransport;
-      case 'vehicle_rental':
-        return AppColors.experienceVehicleRental;
-      case 'goods_transport':
-        return AppColors.experienceGoodsTransport;
-      case 'seat_event':
-        return AppColors.experienceSeatEvent;
-      default:
-        return AppColors.primary;
-    }
-  }
-
   IconData _getExperienceIcon(String? experience) {
     switch (experience) {
       case 'restaurant':
@@ -558,113 +531,174 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
 
   Widget _buildHeaderInfo(bool isDark) {
     return Container(
+      margin: const EdgeInsets.only(top: -28),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 4),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   business!.name,
                   style: TextStyle(
-                    fontSize: 19,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                    height: 1.15,
+                    color: isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
                   ),
                 ),
               ),
-              if (business!.averageRating > 0)
+              if (business!.averageRating > 0) ...[
+                const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.gold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star_rounded, size: 14, color: AppColors.success),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: Color(0xFFB07B16),
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         business!.averageRating.toStringAsFixed(1),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.success,
+                          color: Color(0xFFB07B16),
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '(${business!.reviewCount})',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                       ),
                     ],
                   ),
                 ),
+              ],
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              if (business!.category != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.successContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.verified_rounded,
+                      size: 13,
+                      color: AppColors.success,
+                    ),
+                    SizedBox(width: 3),
+                    Text(
+                      'Verified',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (business!.category != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: _getExperienceColor(business!.category!.slug).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     business!.category!.name,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: _getExperienceColor(business!.category!.slug),
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-              ],
-              if (business!.locality != null)
-                Text(
-                  business!.locality!,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
             ],
           ),
-          if (business!.address != null) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[400]),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    business!.address!,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 14),
+          if (business!.reviewCount > 0)
+            _detailMetaRow(
+              Icons.star_outline_rounded,
+              '${business!.averageRating.toStringAsFixed(1)} · ${business!.reviewCount} reviews',
+              const Color(0xFFB07B16),
+              isDark,
             ),
-          ],
-          if (business!.distance != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.directions_outlined, size: 14, color: Colors.grey[400]),
-                const SizedBox(width: 4),
-                Text(
-                  business!.distance!,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
+          if (business!.address != null)
+            _detailMetaRow(
+              Icons.location_on_outlined,
+              business!.address!,
+              AppColors.muted,
+              isDark,
             ),
-          ],
+          if (business!.distance != null)
+            _detailMetaRow(
+              Icons.near_me_outlined,
+              business!.distance!,
+              AppColors.muted,
+              isDark,
+            ),
+          if (business!.phone != null)
+            _detailMetaRow(
+              Icons.phone_outlined,
+              business!.phone!,
+              AppColors.muted,
+              isDark,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailMetaRow(IconData icon, String text, Color iconColor, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.3,
+                color: isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -672,7 +706,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
 
   Widget _buildActionGrid(bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
       ),
@@ -681,7 +715,7 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
           _buildActionTile(
             Icons.call_rounded,
             'Call',
-            business!.phone != null ? AppColors.success : Colors.grey[300]!,
+            business!.phone != null ? AppColors.navy : Colors.grey[300]!,
             business!.phone != null ? _call : null,
           ),
           const SizedBox(width: 10),
@@ -693,16 +727,16 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
           ),
           const SizedBox(width: 10),
           _buildActionTile(
-            Icons.directions_outlined,
+            Icons.navigation_rounded,
             'Directions',
-            business!.lat != null ? AppColors.primary : Colors.grey[300]!,
+            business!.lat != null ? AppColors.navy : Colors.grey[300]!,
             business!.lat != null ? _directions : null,
           ),
           const SizedBox(width: 10),
           _buildActionTile(
             Icons.share_outlined,
             'Share',
-            Colors.grey[600]!,
+            AppColors.navy,
             _share,
           ),
         ],
@@ -717,19 +751,21 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Column(
             children: [
               Icon(icon, color: color, size: 20),
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w800,
-                  color: color,
+                  color: color == Colors.grey[300]
+                      ? Colors.grey[400]
+                      : AppColors.textPrimary,
                 ),
               ),
             ],
@@ -741,40 +777,46 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
 
   Widget _buildOfferBanner(bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(18, 0, 18, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+        color: const Color(0xFFFFFAF0),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1E0B8)),
       ),
       child: Row(
         children: [
-          const Text('🏷', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
+          const Text('⭐', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              'New user first-booking discount',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primaryDark,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Good News! 🎉',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'New user first-booking discount',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.gold,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'Active',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1a1421),
-              ),
+          const Text(
+            'View Offer ›',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
             ),
           ),
         ],
@@ -783,36 +825,88 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
   }
 
   Widget _buildStickyBookBar(bool isDark) {
+    final priceText = business!.primaryAction != null
+        ? (business!.primaryAction!['price']?.toString())
+        : null;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         border: Border(top: BorderSide(color: AppColors.line)),
-      ),
-      child: GestureDetector(
-        onTap: _navigateToBook,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.gold,
-            borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
           ),
-          child: const Center(
-            child: Text(
-              'Book now',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1a1421),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            if (priceText != null) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'STARTING FROM',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.05,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  Text(
+                    priceText,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              child: GestureDetector(
+                onTap: _navigateToBook,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  decoration: BoxDecoration(
+                    color: AppColors.navy,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.navy.withValues(alpha: 0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Book Now  →',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildTabSection(bool isDark) {
+    const labels = ['Overview', 'Services', 'Reviews', 'Photos'];
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBackground : AppColors.background,
@@ -820,27 +914,48 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
       child: Column(
         children: [
           Container(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 2),
             color: isDark ? AppColors.darkSurface : Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey[500],
-              indicatorColor: AppColors.primary,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorWeight: 3,
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              dividerColor: AppColors.line,
-              tabs: const [
-                Tab(text: 'Overview'),
-                Tab(text: 'Services'),
-                Tab(text: 'Reviews'),
-                Tab(text: 'Photos'),
-              ],
+            child: SizedBox(
+              height: 38,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: labels.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final active = _tabController.index == i;
+                  return GestureDetector(
+                    onTap: () => _tabController.animateTo(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: active ? AppColors.navy : AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Center(
+                        child: Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: active
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           SizedBox(
-            height: 500,
+            height: 520,
             child: TabBarView(
               controller: _tabController,
               children: [
@@ -1338,8 +1453,20 @@ class _BusinessDetailScreenState extends State<BusinessDetailScreen>
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          ...children,
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.line.withValues(alpha: 0.7)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
         ],
       ),
     );
